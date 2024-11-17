@@ -1,0 +1,28 @@
+/* src/styles/globals.css */
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  body {
+    @apply text-gray-900 bg-gray-50;
+  }
+  
+  h1, h2, h3, h4, h5, h6 {
+    @apply font-bold;
+  }
+}
+
+@layer components {
+  .btn-primary {
+    @apply bg-gray-900 text-white px-6 py-2 rounded-md hover:bg-gray-800 transition;
+  }
+  
+  .btn-secondary {
+    @apply bg-white text-gray-900 px-6 py-2 rounded-md border border-gray-300 hover:bg-gray-50 transition;
+  }
+  
+  .input-field {
+    @apply w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-gray-900;
+  }
+}
