@@ -13,54 +13,47 @@ import Login from './components/auth/Login';
 import Register from './components/auth/Register';
 import ForgotPassword from './components/auth/ForgotPassword';
 import ResetPassword from './components/auth/ResetPassword';
-import ProtectedRoute from './components/auth/ProtectedRoute';
+
+// Routes
+import UserRoutes from './routes/userRoutes';
+import AdminRoutes from './routes/adminRoutes';
 
 // Layouts
+import MainLayout from './components/layout/MainLayout';
 import AuthLayout from './components/layout/AuthLayout';
+import ProtectedRoute from './components/auth/ProtectedRoute';
 
 const App = () => {
   return (
     <Router>
       <Routes>
-        {/* Public Routes */}
-        <Route path="/" element={<HomePage />} />
-        <Route path="/shop" element={<ShopPage />} />
-        <Route path="/about" element={<AboutPage />} />
-        <Route path="/contact" element={<ContactPage />} />
+        {/* Public Routes with MainLayout */}
+        <Route element={<MainLayout />}>
+          <Route path="/" element={<HomePage />} />
+          <Route path="/shop" element={<ShopPage />} />
+          <Route path="/about" element={<AboutPage />} />
+          <Route path="/contact" element={<ContactPage />} />
+          
+          {/* User Protected Routes */}
+          <Route path="/user/*" element={
+            <ProtectedRoute allowedRoles={['customer']}>
+              <UserRoutes />
+            </ProtectedRoute>
+          } />
+        </Route>
 
         {/* Auth Routes */}
-        <Route path="/login" element={
-          <AuthLayout>
-            <Login />
-          </AuthLayout>
-        } />
-        <Route path="/register" element={
-          <AuthLayout>
-            <Register />
-          </AuthLayout>
-        } />
-        <Route path="/forgot-password" element={
-          <AuthLayout>
-            <ForgotPassword />
-          </AuthLayout>
-        } />
-        <Route path="/reset-password/:token" element={
-          <AuthLayout>
-            <ResetPassword />
-          </AuthLayout>
-        } />
+        <Route element={<AuthLayout />}>
+          <Route path="/login" element={<Login />} />
+          <Route path="/register" element={<Register />} />
+          <Route path="/forgot-password" element={<ForgotPassword />} />
+          <Route path="/reset-password/:token" element={<ResetPassword />} />
+        </Route>
 
-        {/* Customer Protected Routes */}
-        <Route path="/profile" element={
-          <ProtectedRoute allowedRoles={['customer']}>
-            {/* Add Profile Component Here */}
-          </ProtectedRoute>
-        } />
-
-        {/* Admin Protected Routes */}
+        {/* Admin Routes */}
         <Route path="/admin/*" element={
           <ProtectedRoute allowedRoles={['admin']}>
-            {/* Add Admin Routes Here */}
+            <AdminRoutes />
           </ProtectedRoute>
         } />
 
