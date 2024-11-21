@@ -39,14 +39,15 @@ const Login = () => {
         throw new Error(data.message || 'Login failed');
       }
 
-      // Save token to localStorage
+      // Save token and user data to localStorage
       localStorage.setItem('token', data.token);
+      localStorage.setItem('user', JSON.stringify(data.data.user));
 
       // Redirect based on user role
       if (data.data.user.role === 'admin') {
         navigate('/admin/dashboard');
       } else {
-        navigate('/');
+        navigate('/user/profile'); // Redirect customer to their profile page
       }
     } catch (err) {
       setError(err.message);

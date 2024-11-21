@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { ShoppingCart, Search, Menu, User, Heart } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { ShoppingCart, Search, Menu, User, Heart, LogOut } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import Navigation from './Navigation';
 import SearchBar from './SearchBar';
@@ -8,9 +8,25 @@ import Sidebar from './Sidebar';
 const Header = () => {
   const navigate = useNavigate();
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const [user, setUser] = useState(null);
+
+  useEffect(() => {
+    const userData = localStorage.getItem('user');
+    if (userData) {
+      setUser(JSON.parse(userData));
+    }
+  }, []);
 
   const toggleSidebar = () => {
     setIsSidebarOpen(!isSidebarOpen);
+  };
+
+  const handleUserClick = () => {
+    if (user) {
+      navigate('/user/profile');
+    } else {
+      navigate('/login');
+    }
   };
 
   return (
@@ -37,15 +53,15 @@ const Header = () => {
               <SearchBar />
               <User 
                 className="h-5 w-5 text-gray-700 cursor-pointer hover:text-gray-900 transition-colors" 
-                onClick={() => navigate('/login')}
+                onClick={handleUserClick}
               />
               <Heart 
                 className="h-5 w-5 text-gray-700 cursor-pointer hover:text-gray-900 transition-colors"
-                onClick={() => navigate('/wishlist')}
+                onClick={() => user ? navigate('/user/wishlist') : navigate('/login')}
               />
               <ShoppingCart 
                 className="h-5 w-5 text-gray-700 cursor-pointer hover:text-gray-900 transition-colors"
-                onClick={() => navigate('/cart')}
+                onClick={() => user ? navigate('/cart') : navigate('/login')}
               />
             </div>
           </div>
