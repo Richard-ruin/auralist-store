@@ -1,5 +1,5 @@
 import React from 'react';
-import { Route, Routes } from 'react-router-dom';
+import { Routes, Route } from 'react-router-dom';
 import AdminLayout from '../components/layout/AdminLayout';
 import Dashboard from '../components/admin/Dashboard';
 import ProductManager from '../components/admin/ProductManager';
@@ -8,13 +8,14 @@ import UserManager from '../components/admin/UserManager';
 import CategoryManager from '../components/admin/CategoryManager';
 import Analytics from '../components/admin/Analytics';
 import Settings from '../components/admin/Settings';
-import NotFound from '../pages/NotFound';
+import NotFoundPage from '../pages/NotFound';
 
 const AdminRoutes = () => {
   return (
     <Routes>
+      {/* Layout untuk halaman admin */}
       <Route path="/" element={<AdminLayout />}>
-        <Route index element={<Dashboard />} />
+        <Route index element={<Dashboard />} /> {/* Default halaman */}
         <Route path="dashboard" element={<Dashboard />} />
         <Route path="products" element={<ProductManager />} />
         <Route path="orders" element={<OrderManager />} />
@@ -22,7 +23,9 @@ const AdminRoutes = () => {
         <Route path="categories" element={<CategoryManager />} />
         <Route path="analytics" element={<Analytics />} />
         <Route path="settings" element={<Settings />} />
-        <Route path="*" element={<NotFound />} />
+
+        {/* 404 untuk rute yang tidak ditemukan */}
+        <Route path="*" element={<NotFoundPage />} />
       </Route>
     </Routes>
   );

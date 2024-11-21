@@ -7,6 +7,7 @@ import ShopPage from './pages/Shop';
 import AboutPage from './pages/About';
 import ContactPage from './pages/Contact';
 import NotFoundPage from './pages/NotFound';
+import ProductDetail from './components/product/ProductDetail';
 
 // Auth Components
 import Login from './components/auth/Login';
@@ -27,10 +28,41 @@ const App = () => {
   return (
     <Router>
       <Routes>
-        {/* Public Routes with MainLayout */}
+        {/* Auth Routes */}
+        <Route path="/login" element={
+          <AuthLayout>
+            <Login />
+          </AuthLayout>
+        } />
+        <Route path="/register" element={
+          <AuthLayout>
+            <Register />
+          </AuthLayout>
+        } />
+        <Route path="/forgot-password" element={
+          <AuthLayout>
+            <ForgotPassword />
+          </AuthLayout>
+        } />
+        <Route path="/reset-password/:token" element={
+          <AuthLayout>
+            <ResetPassword />
+          </AuthLayout>
+        } />
+
+        {/* Admin Routes */}
+        <Route path="/admin/*" element={
+          <ProtectedRoute allowedRoles={['admin']}>
+            <AdminRoutes />
+          </ProtectedRoute>
+        } />
+
+        {/* Public Routes */}
         <Route element={<MainLayout />}>
-          <Route path="/" element={<HomePage />} />
+          <Route index element={<HomePage />} />
           <Route path="/shop" element={<ShopPage />} />
+          <Route path="/product/:id" element={<ProductDetail />} />
+
           <Route path="/about" element={<AboutPage />} />
           <Route path="/contact" element={<ContactPage />} />
           
@@ -41,21 +73,6 @@ const App = () => {
             </ProtectedRoute>
           } />
         </Route>
-
-        {/* Auth Routes */}
-        <Route element={<AuthLayout />}>
-          <Route path="/login" element={<Login />} />
-          <Route path="/register" element={<Register />} />
-          <Route path="/forgot-password" element={<ForgotPassword />} />
-          <Route path="/reset-password/:token" element={<ResetPassword />} />
-        </Route>
-
-        {/* Admin Routes */}
-        <Route path="/admin/*" element={
-          <ProtectedRoute allowedRoles={['admin']}>
-            <AdminRoutes />
-          </ProtectedRoute>
-        } />
 
         {/* 404 Route */}
         <Route path="*" element={<NotFoundPage />} />
