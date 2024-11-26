@@ -1,24 +1,34 @@
-// models/Category.js
+const mongoose = require('mongoose');
+
 const categorySchema = new mongoose.Schema({
-    name: {
-      type: String,
-      required: true,
-      trim: true
-    },
-    slug: {
-      type: String,
-      required: true,
-      unique: true
-    },
-    description: String,
-    image: {
-      url: String,
-      alt: String
-    },
-    parent: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: 'Category',
-      default: null
-    }
-  });
-  
+  name: {
+    type: String,
+    required: true,
+    trim: true,
+    unique: true
+  },
+  description: {
+    type: String,
+    required: true
+  },
+  slug: {
+    type: String,
+    required: true,
+    unique: true
+  },
+  image: {
+    type: String,
+    required: true
+  },
+  status: {
+    type: String,
+    enum: ['Active', 'Inactive'],
+    default: 'Active'
+  },
+  productCount: {
+    type: Number,
+    default: 0
+  }
+}, { timestamps: true });
+
+module.exports = mongoose.model('Category', categorySchema);

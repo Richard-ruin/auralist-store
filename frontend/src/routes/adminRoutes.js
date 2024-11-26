@@ -13,9 +13,8 @@ import NotFoundPage from '../pages/NotFound';
 const AdminRoutes = () => {
   return (
     <Routes>
-      {/* Layout untuk halaman admin */}
       <Route path="/" element={<AdminLayout />}>
-        <Route index element={<Dashboard />} /> {/* Default halaman */}
+        <Route index element={<Dashboard />} /> 
         <Route path="dashboard" element={<Dashboard />} />
         <Route path="products" element={<ProductManager />} />
         <Route path="orders" element={<OrderManager />} />
@@ -23,8 +22,6 @@ const AdminRoutes = () => {
         <Route path="categories" element={<CategoryManager />} />
         <Route path="analytics" element={<Analytics />} />
         <Route path="settings" element={<Settings />} />
-
-        {/* 404 untuk rute yang tidak ditemukan */}
         <Route path="*" element={<NotFoundPage />} />
       </Route>
     </Routes>

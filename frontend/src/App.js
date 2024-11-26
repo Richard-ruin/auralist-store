@@ -5,6 +5,7 @@ import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import HomePage from './pages/Home';
 import ShopPage from './pages/Shop';
 import AboutPage from './pages/About';
+import CategoriesPage from './pages/Categories';
 import ContactPage from './pages/Contact';
 import NotFoundPage from './pages/NotFound';
 import ProductDetail from './components/product/ProductDetail';
@@ -24,9 +25,13 @@ import MainLayout from './components/layout/MainLayout';
 import AuthLayout from './components/layout/AuthLayout';
 import ProtectedRoute from './components/auth/ProtectedRoute';
 
+// provider
+import { CategoryProvider } from './context/CategoryContext';
+
 const App = () => {
   return (
     <Router>
+      <CategoryProvider>
       <Routes>
         {/* Auth Routes */}
         <Route path="/login" element={
@@ -62,7 +67,7 @@ const App = () => {
           <Route index element={<HomePage />} />
           <Route path="/shop" element={<ShopPage />} />
           <Route path="/product/:id" element={<ProductDetail />} />
-
+          <Route path="/categories" element={<CategoriesPage />} />
           <Route path="/about" element={<AboutPage />} />
           <Route path="/contact" element={<ContactPage />} />
           
@@ -77,6 +82,7 @@ const App = () => {
         {/* 404 Route */}
         <Route path="*" element={<NotFoundPage />} />
       </Routes>
+      </CategoryProvider>
     </Router>
   );
 };

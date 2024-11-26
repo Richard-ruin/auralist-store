@@ -8,7 +8,9 @@ import {
   Settings, 
   LogOut, 
   Menu as MenuIcon, 
-  X 
+  X,
+  FolderTree,
+  BarChart3
 } from 'lucide-react';
 
 const AdminLayout = () => {
@@ -18,8 +20,10 @@ const AdminLayout = () => {
   const menuItems = [
     { title: 'Dashboard', icon: <LayoutDashboard />, path: '/admin/dashboard' },
     { title: 'Products', icon: <Package />, path: '/admin/products' },
+    { title: 'Categories', icon: <FolderTree />, path: '/admin/categories' },
     { title: 'Orders', icon: <ShoppingCart />, path: '/admin/orders' },
     { title: 'Users', icon: <Users />, path: '/admin/users' },
+    { title: 'Analytics', icon: <BarChart3 />, path: '/admin/analytics' },
     { title: 'Settings', icon: <Settings />, path: '/admin/settings' }
   ];
 
@@ -68,7 +72,7 @@ const AdminLayout = () => {
           {isSidebarOpen ? <X /> : <MenuIcon />}
         </button>
         <div className="p-4">
-          <Outlet /> {/* Komponen anak dari rute */}
+          <Outlet />
         </div>
       </div>
     </div>
