@@ -7,6 +7,7 @@ require('dotenv').config();
 // Import routes
 const authRoutes = require('./routes/auth');
 const categoryRoutes = require('./routes/categories');
+const brandRoutes = require('./routes/brands');
 
 const corsOptions = {
   origin: process.env.CLIENT_URL || 'http://localhost:3000',
@@ -37,9 +38,11 @@ app.use(morgan('dev')); // Logging
 // Routes
 app.use('/api/auth', authRoutes);
 app.use('/api/categories', categoryRoutes);
+app.use('/api/brands', brandRoutes);
 
 //image
 app.use('/api/images', express.static('public/images'));
+
 // Error handling
 app.use(errorHandler);
 

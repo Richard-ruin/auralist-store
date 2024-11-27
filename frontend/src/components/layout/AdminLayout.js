@@ -1,3 +1,4 @@
+// components/layout/AdminLayout.js
 import React, { useState } from 'react';
 import { Link, Outlet, useLocation } from 'react-router-dom';
 import { 
@@ -10,7 +11,8 @@ import {
   Menu as MenuIcon, 
   X,
   FolderTree,
-  BarChart3
+  BarChart3,
+  Tag // Added for Brands icon
 } from 'lucide-react';
 
 const AdminLayout = () => {
@@ -21,6 +23,7 @@ const AdminLayout = () => {
     { title: 'Dashboard', icon: <LayoutDashboard />, path: '/admin/dashboard' },
     { title: 'Products', icon: <Package />, path: '/admin/products' },
     { title: 'Categories', icon: <FolderTree />, path: '/admin/categories' },
+    { title: 'Brands', icon: <Tag />, path: '/admin/brands' }, // Added Brands menu item
     { title: 'Orders', icon: <ShoppingCart />, path: '/admin/orders' },
     { title: 'Users', icon: <Users />, path: '/admin/users' },
     { title: 'Analytics', icon: <BarChart3 />, path: '/admin/analytics' },

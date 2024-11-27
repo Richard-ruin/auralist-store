@@ -1,3 +1,4 @@
+// src/services/api.js
 import axios from 'axios';
 
 const api = axios.create({
@@ -27,5 +28,11 @@ api.interceptors.response.use(
     return Promise.reject(error.response?.data || error);
   }
 );
+
+// Brand API endpoints
+export const getBrands = () => api.get('/brands');
+export const createBrand = (formData) => api.post('/brands', formData);
+export const updateBrand = (id, formData) => api.patch(`/brands/${id}`, formData);
+export const deleteBrand = (id) => api.delete(`/brands/${id}`);
 
 export default api;

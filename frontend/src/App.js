@@ -27,11 +27,14 @@ import ProtectedRoute from './components/auth/ProtectedRoute';
 
 // provider
 import { CategoryProvider } from './context/CategoryContext';
+import { BrandProvider } from './context/BrandContext';
+
 
 const App = () => {
   return (
     <Router>
       <CategoryProvider>
+        <BrandProvider>
       <Routes>
         {/* Auth Routes */}
         <Route path="/login" element={
@@ -82,6 +85,7 @@ const App = () => {
         {/* 404 Route */}
         <Route path="*" element={<NotFoundPage />} />
       </Routes>
+      </BrandProvider>
       </CategoryProvider>
     </Router>
   );

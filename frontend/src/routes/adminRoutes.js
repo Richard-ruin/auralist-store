@@ -9,6 +9,7 @@ import CategoryManager from '../components/admin/CategoryManager';
 import Analytics from '../components/admin/Analytics';
 import Settings from '../components/admin/Settings';
 import NotFoundPage from '../pages/NotFound';
+import BrandManager from '../components/admin/BrandManager';
 
 const AdminRoutes = () => {
   return (
@@ -20,6 +21,7 @@ const AdminRoutes = () => {
         <Route path="orders" element={<OrderManager />} />
         <Route path="users" element={<UserManager />} />
         <Route path="categories" element={<CategoryManager />} />
+        <Route path="brands" element={<BrandManager />} />
         <Route path="analytics" element={<Analytics />} />
         <Route path="settings" element={<Settings />} />
         <Route path="*" element={<NotFoundPage />} />
