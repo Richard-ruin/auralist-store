@@ -1,4 +1,5 @@
-import React, { useState } from 'react';
+// src/components/admin/ProductManager.js
+import React, { useState, useEffect } from 'react';
 import { 
   Plus, 
   Search, 
@@ -8,47 +9,68 @@ import {
   Filter,
   Download
 } from 'lucide-react';
+import ProductModal from './ProductModal';
+import { toast } from 'react-hot-toast';
+import api from '../../services/api';
 
 const ProductManager = () => {
-  const [products] = useState([
-    {
-      id: 1,
-      name: 'HD 660S',
-      category: 'Headphones',
-      brand: 'Sennheiser',
-      price: 499.99,
-      stock: 25,
-      status: 'In Stock',
-      image: '/images/products/hd660s.jpg'
-    },
-    {
-      id: 2,
-      name: 'KEF LS50 Meta',
-      category: 'Speakers',
-      brand: 'KEF',
-      price: 1499.99,
-      stock: 10,
-      status: 'Low Stock',
-      image: '/images/products/kef-ls50.jpg'
-    },
-    {
-      id: 3,
-      name: 'Cambridge CXA81',
-      category: 'Amplifiers',
-      brand: 'Cambridge Audio',
-      price: 1299.99,
-      stock: 0,
-      status: 'Out of Stock',
-      image: '/images/products/cambridge-cxa81.jpg'
-    },
-  ]);
-
+  // Inisialisasi state dengan array kosong
+  const [products, setProducts] = useState([]);
   const [selectedProducts, setSelectedProducts] = useState([]);
-  const [showAddModal, setShowAddModal] = useState(false);
+  const [showModal, setShowModal] = useState(false);
+  const [selectedProduct, setSelectedProduct] = useState(null);
+  const [loading, setLoading] = useState(false);
+  const [filters, setFilters] = useState({
+    search: '',
+    status: '',
+    page: 1,
+    limit: 10
+  });
+  const [pagination, setPagination] = useState({
+    currentPage: 1,
+    totalPages: 1,
+    total: 0
+  });
+
+  // Fungsi untuk fetch products
+  const fetchProducts = async () => {
+    setLoading(true);
+    try {
+      const response = await api.get('/products', {
+        params: filters
+      });
+      setProducts(response.data.data);
+      setPagination({
+        currentPage: response.data.currentPage,
+        totalPages: response.data.totalPages,
+        total: response.data.total
+      });
+    } catch (error) {
+      toast.error('Failed to fetch products');
+    } finally {
+      setLoading(false);
+    }
+  };
+  
+  const handleDelete = async (id) => {
+    if (window.confirm('Are you sure you want to delete this product?')) {
+      try {
+        await api.delete(`/products/${id}`);
+        toast.success('Product deleted successfully');
+        fetchProducts();
+      } catch (error) {
+        toast.error('Failed to delete product');
+      }
+    }
+  };
+
+  useEffect(() => {
+    fetchProducts();
+  }, []);
 
   const handleSelectAll = (e) => {
-    if (e.target.checked) {
-      setSelectedProducts(products.map(product => product.id));
+    if (e.target.checked && products) {
+      setSelectedProducts(products.map(product => product._id));
     } else {
       setSelectedProducts([]);
     }
@@ -64,13 +86,21 @@ const ProductManager = () => {
     });
   };
 
+  const handleSearch = (e) => {
+    setFilters(prev => ({
+      ...prev,
+      search: e.target.value,
+      page: 1
+    }));
+  };
+
   return (
     <div className="space-y-6">
       {/* Header */}
       <div className="flex justify-between items-center">
         <h1 className="text-2xl font-semibold text-gray-900">Products</h1>
         <button
-          onClick={() => setShowAddModal(true)}
+          onClick={() => setShowModal(true)}
           className="flex items-center px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700"
         >
           <Plus className="w-5 h-5 mr-2" />
@@ -86,18 +116,14 @@ const ProductManager = () => {
             <input
               type="text"
               placeholder="Search products..."
+              value={filters.search}
+              onChange={handleSearch}
               className="pl-10 pr-4 py-2 border border-gray-300 rounded-md w-full"
             />
           </div>
           <button className="flex items-center px-4 py-2 border border-gray-300 rounded-md hover:bg-gray-50">
             <Filter className="w-5 h-5 mr-2" />
             Filters
-          </button>
-        </div>
-        <div className="flex items-center gap-4 w-full sm:w-auto">
-          <button className="flex items-center px-4 py-2 border border-gray-300 rounded-md hover:bg-gray-50">
-            <Download className="w-5 h-5 mr-2" />
-            Export
           </button>
         </div>
       </div>
@@ -108,143 +134,142 @@ const ProductManager = () => {
           <table className="min-w-full divide-y divide-gray-200">
             <thead className="bg-gray-50">
               <tr>
-                <th scope="col" className="px-6 py-3 text-left">
+                <th className="px-6 py-3 text-left">
                   <input
                     type="checkbox"
                     onChange={handleSelectAll}
-                    checked={selectedProducts.length === products.length}
+                    checked={products && selectedProducts.length === products.length}
                     className="rounded border-gray-300"
                   />
                 </th>
-                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
                   Product
                 </th>
-                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
                   Category
                 </th>
-                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
                   Price
                 </th>
-                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
                   Stock
                 </th>
-                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
                   Status
                 </th>
-                <th scope="col" className="relative px-6 py-3">
+                <th className="relative px-6 py-3">
                   <span className="sr-only">Actions</span>
                 </th>
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
-              {products.map((product) => (
-                <tr key={product.id}>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <input
-                      type="checkbox"
-                      checked={selectedProducts.includes(product.id)}
-                      onChange={() => handleSelectProduct(product.id)}
-                      className="rounded border-gray-300"
-                    />
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <div className="flex items-center">
-                      <div className="h-10 w-10 flex-shrink-0">
-                        <img
-                          src={product.image || 'https://via.placeholder.com/40'}
-                          alt={product.name}
-                          className="h-10 w-10 rounded-md object-cover"
-                        />
-                      </div>
-                      <div className="ml-4">
-                        <div className="text-sm font-medium text-gray-900">
-                          {product.name}
-                        </div>
-                        <div className="text-sm text-gray-500">
-                          {product.brand}
-                        </div>
-                      </div>
-                    </div>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                    {product.category}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                    ${product.price.toFixed(2)}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                    {product.stock}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <span className={`px-2 py-1 text-xs font-semibold rounded-full ${
-                      product.status === 'In Stock'
-                        ? 'bg-green-100 text-green-800'
-                        : product.status === 'Low Stock'
-                        ? 'bg-yellow-100 text-yellow-800'
-                        : 'bg-red-100 text-red-800'
-                    }`}>
-                      {product.status}
-                    </span>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                    <div className="flex items-center justify-end gap-2">
-                      <button className="text-indigo-600 hover:text-indigo-900">
-                        <Edit className="w-5 h-5" />
-                      </button>
-                      <button className="text-red-600 hover:text-red-900">
-                        <Trash2 className="w-5 h-5" />
-                      </button>
-                      <button className="text-gray-400 hover:text-gray-500">
-                        <MoreVertical className="w-5 h-5" />
-                      </button>
-                    </div>
+              {loading ? (
+                <tr>
+                  <td colSpan="7" className="px-6 py-4 text-center">
+                    Loading...
                   </td>
                 </tr>
-              ))}
+              ) : products && products.length > 0 ? (
+                products.map((product) => (
+                  <tr key={product._id}>
+                    <td className="px-6 py-4">
+                      <input
+                        type="checkbox"
+                        checked={selectedProducts.includes(product._id)}
+                        onChange={() => handleSelectProduct(product._id)}
+                        className="rounded border-gray-300"
+                      />
+                    </td>
+                    <td className="px-6 py-4">
+                      <div className="flex items-center">
+                        <div className="h-10 w-10 flex-shrink-0">
+                          <img
+                            src={product.mainImage || 'https://via.placeholder.com/40'}
+                            alt={product.name}
+                            className="h-10 w-10 rounded-md object-cover"
+                            onError={(e) => {
+                              e.target.onerror = null;
+                              e.target.src = 'https://via.placeholder.com/40';
+                            }}
+                          />
+                        </div>
+                        <div className="ml-4">
+                          <div className="text-sm font-medium text-gray-900">
+                            {product.name}
+                          </div>
+                          <div className="text-sm text-gray-500">
+                            {product.brand?.name}
+                          </div>
+                        </div>
+                      </div>
+                    </td>
+                    <td className="px-6 py-4 text-sm text-gray-500">
+                      {product.category?.name}
+                    </td>
+                    <td className="px-6 py-4 text-sm text-gray-900">
+                      ${product.price?.toFixed(2)}
+                    </td>
+                    <td className="px-6 py-4 text-sm text-gray-500">
+                      {product.stock}
+                    </td>
+                    <td className="px-6 py-4">
+                      <span className={`px-2 py-1 text-xs font-semibold rounded-full ${
+                        product.stock > 10
+                          ? 'bg-green-100 text-green-800'
+                          : product.stock > 0
+                          ? 'bg-yellow-100 text-yellow-800'
+                          : 'bg-red-100 text-red-800'
+                      }`}>
+                        {product.stock > 10
+                          ? 'In Stock'
+                          : product.stock > 0
+                          ? 'Low Stock'
+                          : 'Out of Stock'}
+                      </span>
+                    </td>
+                    <td className="px-6 py-4 text-right text-sm font-medium">
+                      <div className="flex items-center justify-end gap-2">
+                        <button 
+                          className="text-indigo-600 hover:text-indigo-900"
+                          onClick={() => {
+                            setSelectedProduct(product);
+                            setShowModal(true);
+                          }}
+                        >
+                          <Edit className="w-5 h-5" />
+                        </button>
+                        <button className="text-red-600 hover:text-red-900">
+                          <Trash2 className="w-5 h-5" />
+                        </button>
+                        <button className="text-gray-400 hover:text-gray-500">
+                          <MoreVertical className="w-5 h-5" />
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ))
+              ) : (
+                <tr>
+                  <td colSpan="7" className="px-6 py-4 text-center text-gray-500">
+                    No products found
+                  </td>
+                </tr>
+              )}
             </tbody>
           </table>
         </div>
-
-        {/* Pagination */}
-        <div className="bg-white px-4 py-3 flex items-center justify-between border-t border-gray-200 sm:px-6">
-          <div className="flex-1 flex justify-between sm:hidden">
-            <button className="relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50">
-              Previous
-            </button>
-            <button className="ml-3 relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50">
-              Next
-            </button>
-          </div>
-          <div className="hidden sm:flex-1 sm:flex sm:items-center sm:justify-between">
-            <div>
-              <p className="text-sm text-gray-700">
-                Showing <span className="font-medium">1</span> to{' '}
-                <span className="font-medium">10</span> of{' '}
-                <span className="font-medium">20</span> results
-              </p>
-            </div>
-            <div>
-              <nav className="relative z-0 inline-flex rounded-md shadow-sm -space-x-px">
-                <button className="relative inline-flex items-center px-2 py-2 rounded-l-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50">
-                  Previous
-                </button>
-                <button className="relative inline-flex items-center px-4 py-2 border border-gray-300 bg-white text-sm font-medium text-gray-700 hover:bg-gray-50">
-                  1
-                </button>
-                <button className="relative inline-flex items-center px-4 py-2 border border-gray-300 bg-white text-sm font-medium text-gray-700 hover:bg-gray-50">
-                  2
-                </button>
-                <button className="relative inline-flex items-center px-4 py-2 border border-gray-300 bg-white text-sm font-medium text-gray-700 hover:bg-gray-50">
-                  3
-                </button>
-                <button className="relative inline-flex items-center px-2 py-2 rounded-r-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50">
-                  Next
-                </button>
-              </nav>
-            </div>
-          </div>
-        </div>
       </div>
+
+      {showModal && (
+        <ProductModal
+          isOpen={showModal}
+          onClose={() => {
+            setShowModal(false);
+            setSelectedProduct(null);
+          }}
+          product={selectedProduct}
+        />
+      )}
     </div>
   );
 };

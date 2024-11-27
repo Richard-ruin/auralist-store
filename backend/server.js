@@ -8,6 +8,7 @@ require('dotenv').config();
 const authRoutes = require('./routes/auth');
 const categoryRoutes = require('./routes/categories');
 const brandRoutes = require('./routes/brands');
+const productRoutes = require('./routes/products');
 
 const corsOptions = {
   origin: process.env.CLIENT_URL || 'http://localhost:3000',
@@ -39,6 +40,7 @@ app.use(morgan('dev')); // Logging
 app.use('/api/auth', authRoutes);
 app.use('/api/categories', categoryRoutes);
 app.use('/api/brands', brandRoutes);
+app.use('/api/products', require('./routes/products'));
 
 //image
 app.use('/api/images', express.static('public/images'));
