@@ -19,7 +19,7 @@ api.interceptors.request.use((config) => {
 
 // Handle response errors
 api.interceptors.response.use(
-  (response) => response.data,
+  (response) => response,  // Return full response object
   (error) => {
     if (error.response?.status === 401) {
       localStorage.removeItem('token');
@@ -28,11 +28,5 @@ api.interceptors.response.use(
     return Promise.reject(error.response?.data || error);
   }
 );
-
-// Brand API endpoints
-export const getBrands = () => api.get('/brands');
-export const createBrand = (formData) => api.post('/brands', formData);
-export const updateBrand = (id, formData) => api.patch(`/brands/${id}`, formData);
-export const deleteBrand = (id) => api.delete(`/brands/${id}`);
 
 export default api;

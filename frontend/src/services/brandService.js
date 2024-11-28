@@ -2,17 +2,27 @@
 import api from './api';
 
 export const brandService = {
-  getAll: () => api.get('/brands'),
-  
-  create: (formData) => {
-    const config = { headers: { 'Content-Type': 'multipart/form-data' }};
-    return api.post('/brands', formData, config);
+  getAll: async () => {
+    const response = await api.get('/brands');
+    return response.data;
   },
   
-  update: (id, formData) => {
-    const config = { headers: { 'Content-Type': 'multipart/form-data' }};
-    return api.patch(`/brands/${id}`, formData, config);
+  create: async (formData) => {
+    const response = await api.post('/brands', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' }
+    });
+    return response.data;
   },
   
-  delete: (id) => api.delete(`/brands/${id}`)
+  update: async (id, formData) => {
+    const response = await api.patch(`/brands/${id}`, formData, {
+      headers: { 'Content-Type': 'multipart/form-data' }
+    });
+    return response.data;
+  },
+  
+  delete: async (id) => {
+    const response = await api.delete(`/brands/${id}`);
+    return response.data;
+  }
 };

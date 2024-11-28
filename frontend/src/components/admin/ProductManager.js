@@ -184,7 +184,10 @@ const ProductManager = () => {
                       <div className="flex items-center">
                         <div className="h-10 w-10 flex-shrink-0">
                           <img
-                            src={product.mainImage || 'https://via.placeholder.com/40'}
+                            src={product.mainImage 
+                              ? `${process.env.REACT_APP_API_URL}/images/products/${product.mainImage.split('/').pop()}`
+                              : 'https://via.placeholder.com/40'
+                            }
                             alt={product.name}
                             className="h-10 w-10 rounded-md object-cover"
                             onError={(e) => {

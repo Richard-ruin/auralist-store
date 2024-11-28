@@ -1,18 +1,30 @@
+
+
 // services/categoryService.js
 import api from './api';
 
 export const categoryService = {
-  getAll: () => api.get('/categories'),
-  
-  create: (formData) => {
-    const config = { headers: { 'Content-Type': 'multipart/form-data' }};
-    return api.post('/categories', formData, config);
+  getAll: async () => {
+    const response = await api.get('/categories');
+    return response.data;
   },
   
-  update: (id, formData) => {
-    const config = { headers: { 'Content-Type': 'multipart/form-data' }};
-    return api.patch(`/categories/${id}`, formData, config);
+  create: async (formData) => {
+    const response = await api.post('/categories', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' }
+    });
+    return response.data;
   },
   
-  delete: (id) => api.delete(`/categories/${id}`)
+  update: async (id, formData) => {
+    const response = await api.patch(`/categories/${id}`, formData, {
+      headers: { 'Content-Type': 'multipart/form-data' }
+    });
+    return response.data;
+  },
+  
+  delete: async (id) => {
+    const response = await api.delete(`/categories/${id}`);
+    return response.data;
+  }
 };

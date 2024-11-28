@@ -1,4 +1,3 @@
-// controllers/productController.js
 const Product = require('../models/Product');
 const Brand = require('../models/Brand');
 const Category = require('../models/Category');
@@ -6,44 +5,47 @@ const slugify = require('slugify');
 const fs = require('fs');
 const path = require('path');
 
-// controllers/productController.js
 exports.createProduct = async (req, res) => {
   try {
-    // Debug log
     console.log('Files received:', req.files);
     console.log('Body received:', req.body);
 
-    // Validate files
     if (!req.files || req.files.length === 0) {
       return res.status(400).json({
         status: 'fail',
-        message: 'Please upload at least one image',
-        debug: { body: req.body, files: req.files }
+        message: 'Please upload at least one image'
       });
     }
 
     // Process images
-    const images = req.files.map(file => `/images/products/${file.filename}`);
+    const images = req.files.map(file => file.filename);
     const mainImage = images[0];
 
-    // Create product data
+    // Generate SKU if not provided
+    const sku = req.body.sku || `PRD${Date.now()}`;
+
+    // Create product data with all required fields
     const productData = {
       name: req.body.name,
       description: req.body.description,
       price: req.body.price,
+      costPrice: req.body.costPrice,
       stock: req.body.stock,
       brand: req.body.brand,
       category: req.body.category,
-      status: req.body.status,
+      status: req.body.status || 'In Stock',
+      sku: sku,
       images: images,
       mainImage: mainImage,
       slug: slugify(req.body.name, { lower: true }),
-      createdBy: req.user._id
+      createdBy: req.user._id,
+      lowStockThreshold: req.body.lowStockThreshold || 10
     };
 
+    // Create product
     const product = await Product.create(productData);
 
-    // Update related collections
+    // Update product counts for brand and category
     await Promise.all([
       Brand.findByIdAndUpdate(product.brand, { $inc: { productCount: 1 } }),
       Category.findByIdAndUpdate(product.category, { $inc: { productCount: 1 } })
@@ -57,8 +59,7 @@ exports.createProduct = async (req, res) => {
     console.error('Create Product Error:', error);
     res.status(400).json({
       status: 'fail',
-      message: error.message,
-      debug: { error: error.stack }
+      message: error.message
     });
   }
 };

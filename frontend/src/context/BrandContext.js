@@ -1,6 +1,6 @@
+// src/context/BrandContext.js
 import React, { createContext, useState, useContext } from 'react';
-import * as api from '../services/api';
-
+import api from '../services/api';
 
 const BrandContext = createContext();
 
@@ -12,10 +12,10 @@ export const BrandProvider = ({ children }) => {
   const fetchBrands = async () => {
     setLoading(true);
     try {
-      const { data } = await api.getBrands();
-      setBrands(data.data);
+      const response = await api.get('/brands');
+      setBrands(response.data.data);
     } catch (err) {
-      setError(err.response?.data?.message || 'Error fetching brands');
+      setError(err.message || 'Error fetching brands');
     } finally {
       setLoading(false);
     }
@@ -23,30 +23,34 @@ export const BrandProvider = ({ children }) => {
 
   const addBrand = async (formData) => {
     try {
-      const { data } = await api.createBrand(formData);
-      setBrands([...brands, data.data]);
-      return data.data;
+      const response = await api.post('/brands', formData, {
+        headers: { 'Content-Type': 'multipart/form-data' }
+      });
+      setBrands([...brands, response.data.data]);
+      return response.data.data;
     } catch (err) {
-      throw new Error(err.response?.data?.message || 'Error creating brand');
+      throw new Error(err.message || 'Error creating brand');
     }
   };
 
-  const updateBrand = async (id, formData) => {
+  const updateBrandById = async (id, formData) => {
     try {
-      const { data } = await api.updateBrand(id, formData);
-      setBrands(brands.map(brand => brand._id === id ? data.data : brand));
-      return data.data;
+      const response = await api.patch(`/brands/${id}`, formData, {
+        headers: { 'Content-Type': 'multipart/form-data' }
+      });
+      setBrands(brands.map(brand => brand._id === id ? response.data.data : brand));
+      return response.data.data;
     } catch (err) {
-      throw new Error(err.response?.data?.message || 'Error updating brand');
+      throw new Error(err.message || 'Error updating brand');
     }
   };
 
-  const deleteBrand = async (id) => {
+  const deleteBrandById = async (id) => {
     try {
-      await api.deleteBrand(id);
+      await api.delete(`/brands/${id}`);
       setBrands(brands.filter(brand => brand._id !== id));
     } catch (err) {
-      throw new Error(err.response?.data?.message || 'Error deleting brand');
+      throw new Error(err.message || 'Error deleting brand');
     }
   };
 
@@ -57,12 +61,18 @@ export const BrandProvider = ({ children }) => {
       error,
       fetchBrands,
       addBrand,
-      updateBrand,
-      deleteBrand
+      updateBrand: updateBrandById,
+      deleteBrand: deleteBrandById
     }}>
       {children}
     </BrandContext.Provider>
   );
 };
 
-export const useBrand = () => useContext(BrandContext);
+export const useBrand = () => {
+  const context = useContext(BrandContext);
+  if (!context) {
+    throw new Error('useBrand must be used within BrandProvider');
+  }
+  return context;
+};
