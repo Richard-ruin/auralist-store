@@ -9,6 +9,7 @@ const authRoutes = require('./routes/auth');
 const categoryRoutes = require('./routes/categories');
 const brandRoutes = require('./routes/brands');
 const productRoutes = require('./routes/products');
+const specificationRoutes = require('./routes/specifications');
 
 const corsOptions = {
   origin: process.env.CLIENT_URL || 'http://localhost:3000',
@@ -41,7 +42,7 @@ app.use('/api/auth', authRoutes);
 app.use('/api/categories', categoryRoutes);
 app.use('/api/brands', brandRoutes);
 app.use('/api/products', require('./routes/products'));
-
+app.use('/api/specifications', specificationRoutes); 
 //image
 app.use('/api/images', express.static('public/images'));
 
@@ -65,3 +66,9 @@ const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => {
   console.log(`Server is running on port ${PORT}`);
 });
+
+app._router.stack.forEach(function(r){
+  if (r.route && r.route.path){
+    console.log(r.route.path)
+  }
+})

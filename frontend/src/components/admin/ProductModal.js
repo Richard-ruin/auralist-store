@@ -4,7 +4,7 @@ import { X } from 'lucide-react';
 import { toast } from 'react-hot-toast';
 import api from '../../services/api';
 
-const ProductModal = ({ isOpen, onClose, product }) => {
+const ProductModal = ({ product, onClose, onSuccess }) => {
   const [formData, setFormData] = useState({
     name: '',
     description: '',
@@ -14,25 +14,17 @@ const ProductModal = ({ isOpen, onClose, product }) => {
     brand: '',
     category: '',
     status: 'In Stock',
-    sku: '',
-    lowStockThreshold: '10',
-    images: null
+    images: null,
+    lowStockThreshold: '10'
   });
 
+  const [loading, setLoading] = useState(false);
   const [brands, setBrands] = useState([]);
   const [categories, setCategories] = useState([]);
-  const [loading, setLoading] = useState(false);
   const [previewImages, setPreviewImages] = useState([]);
-
-  // Generate SKU
-  useEffect(() => {
-    if (!product) {
-      setFormData(prev => ({
-        ...prev,
-        sku: `PRD${Date.now()}`
-      }));
-    }
-  }, [product]);
+  const [currentImages, setCurrentImages] = useState([]);
+  const [categorySpecs, setCategorySpecs] = useState([]);
+  const [specValues, setSpecValues] = useState({});
 
   // Fetch brands and categories
   useEffect(() => {
@@ -42,18 +34,16 @@ const ProductModal = ({ isOpen, onClose, product }) => {
           api.get('/brands'),
           api.get('/categories')
         ]);
-        
-        setBrands(brandsRes.data.data || []);
-        setCategories(categoriesRes.data.data || []);
+        setBrands(brandsRes.data.data);
+        setCategories(categoriesRes.data.data);
       } catch (error) {
         toast.error('Failed to load brands and categories');
       }
     };
-
     fetchData();
   }, []);
 
-  // Initialize form data when product prop changes
+  // Initialize form data when editing
   useEffect(() => {
     if (product) {
       setFormData({
@@ -65,78 +55,175 @@ const ProductModal = ({ isOpen, onClose, product }) => {
         brand: product.brand?._id || '',
         category: product.category?._id || '',
         status: product.status || 'In Stock',
-        sku: product.sku || '',
-        lowStockThreshold: product.lowStockThreshold || '10',
-        images: null
+        images: null,
+        lowStockThreshold: product.lowStockThreshold || '10'
       });
+      setCurrentImages(product.images || []);
+
+      // Set initial spec values if editing
+      if (product.specifications) {
+        const specMap = {};
+        product.specifications.forEach(spec => {
+          specMap[spec.specification._id] = spec.value;
+        });
+        setSpecValues(specMap);
+      }
     }
   }, [product]);
 
-  const handleImageChange = (e) => {
-    const files = Array.from(e.target.files);
-    if (files.length > 0) {
-      if (files.length > 5) {
-        toast.error('Maximum 5 images allowed');
-        return;
+  // Fetch specifications when category changes
+  useEffect(() => {
+    const fetchSpecs = async () => {
+      if (formData.category) {
+        try {
+          const response = await api.get(`/specifications/category/${formData.category}`);
+          setCategorySpecs(response.data.data);
+        } catch (error) {
+          toast.error('Failed to load specifications');
+        }
       }
-      setFormData(prev => ({ ...prev, images: files }));
-      
-      // Create previews
-      const previews = files.map(file => URL.createObjectURL(file));
-      setPreviewImages(prev => {
-        // Clean up old preview URLs
-        prev.forEach(url => URL.revokeObjectURL(url));
-        return previews;
-      });
+    };
+
+    if (formData.category) {
+      fetchSpecs();
     }
-  };
+  }, [formData.category]);
+
+  
+
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
-
+  
     try {
-      const data = new FormData();
-
-      // Append all form data
+      // Validate required fields
+      if (!formData.name || !formData.description || !formData.price || 
+          !formData.costPrice || !formData.stock || !formData.brand || 
+          !formData.category) {
+        toast.error('Please fill all required fields');
+        return;
+      }
+  
+      // Validate at least one image for new products
+      if (!product && (!formData.images || !formData.images.length)) {
+        toast.error('Please select at least one image');
+        return;
+      }
+  
+      const formDataToSend = new FormData();
+  
+      // Append basic form data
       Object.keys(formData).forEach(key => {
-        if (key !== 'images') {
-          data.append(key, formData[key]);
+        if (key !== 'images' && formData[key] !== '') {
+          formDataToSend.append(key, formData[key]);
         }
       });
-
-      // Append images
-      if (formData.images) {
+  
+      // Handle images
+      if (formData.images && formData.images.length > 0) {
         Array.from(formData.images).forEach(file => {
-          data.append('images', file);
+          formDataToSend.append('images', file);
         });
+      } else if (product && currentImages && currentImages.length > 0) {
+        // If editing and using existing images
+        formDataToSend.append('currentImages', JSON.stringify(currentImages));
+      } else if (!product) {
+        // New product must have images
+        toast.error('Please select at least one image');
+        return;
       }
-
+  
+      // Handle specifications
+      if (Object.keys(specValues).length > 0) {
+        const specs = Object.entries(specValues)
+          .filter(([_, value]) => value !== '') // Remove empty values
+          .map(([specId, value]) => ({
+            specification: specId,
+            value: value.toString() // Ensure value is string
+          }));
+        
+        if (specs.length > 0) {
+          formDataToSend.append('specifications', JSON.stringify(specs));
+        }
+      }
+  
+      console.log('Submitting data:', {
+        images: formData.images,
+        currentImages,
+        specifications: specValues
+      });
+  
+      let response;
       if (product) {
-        await api.patch(`/products/${product._id}`, data, {
+        response = await api.patch(`/products/${product._id}`, formDataToSend, {
           headers: { 'Content-Type': 'multipart/form-data' }
         });
         toast.success('Product updated successfully');
       } else {
-        await api.post('/products', data, {
+        response = await api.post('/products', formDataToSend, {
           headers: { 'Content-Type': 'multipart/form-data' }
         });
         toast.success('Product created successfully');
       }
-
+  
+      if (onSuccess) {
+        onSuccess(response.data);
+      }
       onClose();
-      window.location.reload();
     } catch (error) {
-      console.error('Error:', error);
+      console.error('Error saving product:', error);
       toast.error(error.response?.data?.message || 'Failed to save product');
     } finally {
       setLoading(false);
     }
   };
+  
+  // Update image handling
+  const handleImageChange = (e) => {
+    const files = Array.from(e.target.files);
+    
+    if (files.length > 5) {
+      toast.error('Maximum 5 images allowed');
+      return;
+    }
+  
+    // Validate file types
+    const validTypes = ['image/jpeg', 'image/png', 'image/webp', 'image/jpg'];
+    const invalidFiles = files.filter(file => !validTypes.includes(file.type));
+    if (invalidFiles.length > 0) {
+      toast.error('Only JPG, PNG and WebP images are allowed');
+      return;
+    }
+  
+    // Validate file sizes
+    const maxSize = 5 * 1024 * 1024; // 5MB
+    const oversizedFiles = files.filter(file => file.size > maxSize);
+    if (oversizedFiles.length > 0) {
+      toast.error('Images must be less than 5MB');
+      return;
+    }
+  
+    setFormData(prev => ({ ...prev, images: files }));
+      
+    // Create previews
+    const previews = files.map(file => URL.createObjectURL(file));
+    setPreviewImages(prev => {
+      prev.forEach(URL.revokeObjectURL);
+      return previews;
+    });
+  };
+
+  // Cleanup preview URLs
+  useEffect(() => {
+    return () => {
+      previewImages.forEach(URL.revokeObjectURL);
+    };
+  }, [previewImages]);
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-      <div className="bg-white rounded-lg p-6 w-full max-w-lg max-h-[90vh] overflow-y-auto">
+      <div className="bg-white rounded-lg w-full max-w-3xl max-h-[90vh] overflow-y-auto p-6">
         <div className="flex justify-between items-center mb-4">
           <h2 className="text-xl font-semibold">
             {product ? 'Edit Product' : 'Add Product'}
@@ -146,7 +233,8 @@ const ProductModal = ({ isOpen, onClose, product }) => {
           </button>
         </div>
 
-        <form onSubmit={handleSubmit} className="space-y-4">
+        <form onSubmit={handleSubmit} className="space-y-6">
+          {/* Basic Information */}
           <div className="grid grid-cols-2 gap-4">
             <div>
               <label className="block text-sm font-medium mb-1">Name</label>
@@ -159,13 +247,18 @@ const ProductModal = ({ isOpen, onClose, product }) => {
               />
             </div>
             <div>
-              <label className="block text-sm font-medium mb-1">SKU</label>
-              <input
-                type="text"
-                value={formData.sku}
-                readOnly
-                className="w-full border rounded-md p-2 bg-gray-100"
-              />
+              <label className="block text-sm font-medium mb-1">Category</label>
+              <select
+                value={formData.category}
+                onChange={(e) => setFormData({...formData, category: e.target.value})}
+                className="w-full border rounded-md p-2"
+                required
+              >
+                <option value="">Select Category</option>
+                {categories.map(category => (
+                  <option key={category._id} value={category._id}>{category.name}</option>
+                ))}
+              </select>
             </div>
           </div>
 
@@ -180,6 +273,7 @@ const ProductModal = ({ isOpen, onClose, product }) => {
             />
           </div>
 
+          {/* Pricing and Stock */}
           <div className="grid grid-cols-2 gap-4">
             <div>
               <label className="block text-sm font-medium mb-1">Selling Price</label>
@@ -207,7 +301,7 @@ const ProductModal = ({ isOpen, onClose, product }) => {
             </div>
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-3 gap-4">
             <div>
               <label className="block text-sm font-medium mb-1">Stock</label>
               <input
@@ -220,7 +314,7 @@ const ProductModal = ({ isOpen, onClose, product }) => {
               />
             </div>
             <div>
-              <label className="block text-sm font-medium mb-1">Low Stock Alert</label>
+              <label className="block text-sm font-medium mb-1">Low Stock Threshold</label>
               <input
                 type="number"
                 value={formData.lowStockThreshold}
@@ -230,55 +324,41 @@ const ProductModal = ({ isOpen, onClose, product }) => {
                 required
               />
             </div>
-          </div>
-
-          <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="block text-sm font-medium mb-1">Brand</label>
+              <label className="block text-sm font-medium mb-1">Status</label>
               <select
-                value={formData.brand}
-                onChange={(e) => setFormData({...formData, brand: e.target.value})}
+                value={formData.status}
+                onChange={(e) => setFormData({...formData, status: e.target.value})}
                 className="w-full border rounded-md p-2"
                 required
               >
-                <option value="">Select Brand</option>
-                {brands.map(brand => (
-                  <option key={brand._id} value={brand._id}>{brand.name}</option>
-                ))}
-              </select>
-            </div>
-            <div>
-              <label className="block text-sm font-medium mb-1">Category</label>
-              <select
-                value={formData.category}
-                onChange={(e) => setFormData({...formData, category: e.target.value})}
-                className="w-full border rounded-md p-2"
-                required
-              >
-                <option value="">Select Category</option>
-                {categories.map(category => (
-                  <option key={category._id} value={category._id}>{category.name}</option>
-                ))}
+                <option value="In Stock">In Stock</option>
+                <option value="Low Stock">Low Stock</option>
+                <option value="Out of Stock">Out of Stock</option>
               </select>
             </div>
           </div>
 
           <div>
-            <label className="block text-sm font-medium mb-1">Status</label>
+            <label className="block text-sm font-medium mb-1">Brand</label>
             <select
-              value={formData.status}
-              onChange={(e) => setFormData({...formData, status: e.target.value})}
+              value={formData.brand}
+              onChange={(e) => setFormData({...formData, brand: e.target.value})}
               className="w-full border rounded-md p-2"
               required
             >
-              <option value="In Stock">In Stock</option>
-              <option value="Low Stock">Low Stock</option>
-              <option value="Out of Stock">Out of Stock</option>
+              <option value="">Select Brand</option>
+              {brands.map(brand => (
+                <option key={brand._id} value={brand._id}>{brand.name}</option>
+              ))}
             </select>
           </div>
 
+          {/* Images */}
           <div>
-            <label className="block text-sm font-medium mb-1">Images</label>
+            <label className="block text-sm font-medium mb-1">
+              Product Images (Max 5)
+            </label>
             <input
               type="file"
               onChange={handleImageChange}
@@ -287,43 +367,160 @@ const ProductModal = ({ isOpen, onClose, product }) => {
               accept="image/*"
               required={!product}
             />
-            <p className="mt-1 text-sm text-gray-500">Maximum 5 images allowed</p>
-
-            {previewImages.length > 0 && (
+            {/* Image Previews */}
+            {(previewImages.length > 0 || currentImages.length > 0) && (
               <div className="mt-2 grid grid-cols-5 gap-2">
-                {previewImages.map((url, index) => (
-                  <img
-                    key={index}
-                    src={url}
-                    alt={`Preview ${index + 1}`}
-                    className="w-full h-20 object-cover rounded-md"
-                  />
-                ))}
+                {previewImages.length > 0 ? 
+                  previewImages.map((url, index) => (
+                    <div key={index} className="relative">
+                      <img
+                        src={url}
+                        alt={`Preview ${index + 1}`}
+                        className="w-full h-24 object-cover rounded-lg"
+                      />
+                      {index === 0 && (
+                        <span className="absolute bottom-1 left-1 bg-blue-500 text-white text-xs px-2 py-1 rounded">
+                          Main
+                        </span>
+                      )}
+                    </div>
+                  ))
+                  :
+                  currentImages.map((image, index) => (
+                    <div key={index} className="relative">
+                      <img
+                        src={`${process.env.REACT_APP_API_URL}/images/products/${image}`}
+                        alt={`Current ${index + 1}`}
+                        className="w-full h-24 object-cover rounded-lg"
+                      />
+                      {index === 0 && (
+                        <span className="absolute bottom-1 left-1 bg-blue-500 text-white text-xs px-2 py-1 rounded">
+                          Main
+                        </span>
+                      )}
+                    </div>
+                  ))
+                }
               </div>
             )}
           </div>
 
-          <div className="flex justify-end space-x-2 mt-6">
-            <button
-              type="button"
-              onClick={onClose}
-              className="px-4 py-2 border rounded-md hover:bg-gray-50"
-              disabled={loading}
-            >
-              Cancel
-            </button>
-            <button
-              type="submit"
-              className="px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 disabled:bg-indigo-400"
-              disabled={loading}
-            >
-              {loading ? 'Saving...' : (product ? 'Update' : 'Create')}
-            </button>
-          </div>
-        </form>
+          {/* Specifications */}
+          {categorySpecs.length > 0 && (
+            <div>
+              <h3 className="text-lg font-medium mb-4">Specifications</h3>
+              <div className="grid grid-cols-2 gap-4">
+              {categorySpecs.map((spec) => (
+  <div key={spec._id}>
+    <label className="block text-sm font-medium mb-1">
+      {spec.displayName}
+      {spec.isRequired && <span className="text-red-500">*</span>}
+    </label>
+
+    {spec.type === 'select' ? (
+      <select
+        value={specValues[spec._id] || ''}
+        onChange={(e) => setSpecValues({
+          ...specValues,
+          [spec._id]: e.target.value
+        })}
+        className="w-full border rounded-md p-2"
+        required={spec.isRequired}
+      >
+        <option value="">Select {spec.displayName}</option>
+        {spec.options.map((option, idx) => (
+          <option key={idx} value={option}>{option}</option>
+        ))}
+      </select>
+    ) : spec.type === 'boolean' ? (
+      <select
+        value={specValues[spec._id] || ''}
+        onChange={(e) => setSpecValues({
+          ...specValues,
+          [spec._id]: e.target.value === 'true'
+        })}
+        className="w-full border rounded-md p-2"
+        required={spec.isRequired}
+      >
+        <option value="">Select {spec.displayName}</option>
+        <option value="true">Yes</option>
+        <option value="false">No</option>
+      </select>
+    ) : spec.type === 'number' ? (
+      <div className="flex items-center">
+        <input
+          type="number"
+          value={specValues[spec._id] || ''}
+          onChange={(e) => setSpecValues({
+            ...specValues,
+            [spec._id]: e.target.value
+          })}
+          className="w-full border rounded-md p-2"
+          required={spec.isRequired}
+          placeholder={`Enter ${spec.displayName}`}
+        />
+        {spec.unit && (
+          <span className="ml-2 text-gray-500">{spec.unit}</span>
+        )}
       </div>
+    ) : spec.type === 'textarea' ? (
+      <textarea
+        value={specValues[spec._id] || ''}
+        onChange={(e) => setSpecValues({
+          ...specValues,
+          [spec._id]: e.target.value
+        })}
+        className="w-full border rounded-md p-2"
+        required={spec.isRequired}
+        placeholder={`Enter ${spec.displayName}`}
+        rows="3"
+      />
+    ) : (
+      // String type (default)
+      <input
+        type="text"
+        value={specValues[spec._id] || ''}
+        onChange={(e) => setSpecValues({
+          ...specValues,
+          [spec._id]: e.target.value
+        })}
+        className="w-full border rounded-md p-2"
+        required={spec.isRequired}
+        placeholder={`Enter ${spec.displayName}`}
+      />
+    )}
+    
+    {spec.unit && spec.type !== 'number' && (
+      <span className="text-sm text-gray-500 mt-1">
+        Unit: {spec.unit}
+      </span>
+    )}
+  </div>
+))}
+            </div>
+          </div>
+        )}
+
+        <div className="flex justify-end space-x-4">
+          <button
+            type="button"
+            onClick={onClose}
+            className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-200 hover:bg-gray-300 rounded-md"
+          >
+            Cancel
+          </button>
+          <button
+            type="submit"
+            disabled={loading}
+            className={`px-4 py-2 text-sm font-medium text-white rounded-md ${loading ? 'bg-gray-400' : 'bg-blue-500 hover:bg-blue-600'}`}
+          >
+            {loading ? 'Saving...' : product ? 'Update Product' : 'Create Product'}
+          </button>
+        </div>
+      </form>
     </div>
-  );
+  </div>
+);
 };
 
 export default ProductModal;

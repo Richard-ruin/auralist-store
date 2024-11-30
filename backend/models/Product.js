@@ -1,7 +1,20 @@
+// models/Product.js
 const mongoose = require('mongoose');
 
+const specificationValueSchema = new mongoose.Schema({
+  specification: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Specification',
+    required: true
+  },
+  value: {
+    type: mongoose.Schema.Types.Mixed,
+    required: true
+  }
+});
+
 const productSchema = new mongoose.Schema({
-  // Basic Information (sesuai dengan yang ditampilkan di table)
+  // Basic Information
   name: {
     type: String,
     required: [true, 'Product name is required'],
@@ -39,7 +52,7 @@ const productSchema = new mongoose.Schema({
     default: 'In Stock'
   },
   
-  // Images (untuk product image di table)
+  // Images
   images: [{
     type: String,
     required: true
@@ -49,13 +62,11 @@ const productSchema = new mongoose.Schema({
     required: true
   },
 
-  // Additional Fields untuk fitur filter dan search
+  // Specifications
+  specifications: [specificationValueSchema],
+
+  // SEO and Filters
   slug: {
-    type: String,
-    required: true,
-    unique: true
-  },
-  sku: {
     type: String,
     required: true,
     unique: true
@@ -65,7 +76,7 @@ const productSchema = new mongoose.Schema({
     required: [true, 'Product description is required']
   },
   
-  // Fields untuk inventory management
+  // Inventory Management
   lowStockThreshold: {
     type: Number,
     default: 10
@@ -77,14 +88,14 @@ const productSchema = new mongoose.Schema({
   },
 
   // Pricing
-  comparePrice: Number, // untuk diskon/harga sebelum diskon
+  comparePrice: Number,
   costPrice: {
     type: Number,
     required: true,
     min: 0
   },
 
-  // Timestamps
+  // Metadata
   createdBy: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'User',
@@ -96,7 +107,7 @@ const productSchema = new mongoose.Schema({
   toObject: { virtuals: true }
 });
 
-// Indexes untuk search functionality
+// Indexes
 productSchema.index({ name: 'text', description: 'text' });
 productSchema.index({ slug: 1, sku: 1 });
 
@@ -115,18 +126,35 @@ productSchema.pre('save', function(next) {
   next();
 });
 
-// Method untuk update stock
-productSchema.methods.updateStock = async function(quantity, operation = 'decrease') {
-  const modifier = operation === 'decrease' ? -1 : 1;
-  this.stock += (quantity * modifier);
-  await this.save();
-  return this;
-};
-
-// Virtual untuk hitung margin
+// Virtual untuk margin
 productSchema.virtual('margin').get(function() {
   return ((this.price - this.costPrice) / this.price) * 100;
 });
+
+// Method untuk validasi spesifikasi
+productSchema.methods.validateSpecifications = async function() {
+  const Specification = mongoose.model('Specification');
+  
+  // Get required specifications for this category
+  const requiredSpecs = await Specification.find({
+    category: this.category,
+    isRequired: true
+  });
+  
+  // Check if all required specifications are present
+  const specIds = this.specifications.map(spec => spec.specification.toString());
+  const missingSpecs = requiredSpecs.filter(spec => 
+    !specIds.includes(spec._id.toString())
+  );
+  
+  if (missingSpecs.length > 0) {
+    throw new Error(`Missing required specifications: ${
+      missingSpecs.map(spec => spec.displayName).join(', ')
+    }`);
+  }
+  
+  return true;
+};
 
 const Product = mongoose.model('Product', productSchema);
 

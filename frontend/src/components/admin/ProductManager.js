@@ -1,5 +1,6 @@
 // src/components/admin/ProductManager.js
 import React, { useState, useEffect } from 'react';
+
 import { 
   Plus, 
   Search, 
@@ -18,6 +19,7 @@ const ProductManager = () => {
   const [products, setProducts] = useState([]);
   const [selectedProducts, setSelectedProducts] = useState([]);
   const [showModal, setShowModal] = useState(false);
+  const [showDropwown, setShowDropdown] = useState(false);
   const [selectedProduct, setSelectedProduct] = useState(null);
   const [loading, setLoading] = useState(false);
   const [filters, setFilters] = useState({
@@ -31,7 +33,7 @@ const ProductManager = () => {
     totalPages: 1,
     total: 0
   });
-
+  
   // Fungsi untuk fetch products
   const fetchProducts = async () => {
     setLoading(true);
@@ -181,31 +183,34 @@ const ProductManager = () => {
                       />
                     </td>
                     <td className="px-6 py-4">
-                      <div className="flex items-center">
-                        <div className="h-10 w-10 flex-shrink-0">
-                          <img
-                            src={product.mainImage 
-                              ? `${process.env.REACT_APP_API_URL}/images/products/${product.mainImage.split('/').pop()}`
-                              : 'https://via.placeholder.com/40'
-                            }
-                            alt={product.name}
-                            className="h-10 w-10 rounded-md object-cover"
-                            onError={(e) => {
-                              e.target.onerror = null;
-                              e.target.src = 'https://via.placeholder.com/40';
-                            }}
-                          />
-                        </div>
-                        <div className="ml-4">
-                          <div className="text-sm font-medium text-gray-900">
-                            {product.name}
-                          </div>
-                          <div className="text-sm text-gray-500">
-                            {product.brand?.name}
-                          </div>
-                        </div>
-                      </div>
-                    </td>
+  <div className="flex items-center">
+    <div className="flex -space-x-2 overflow-hidden">
+      {product.images?.slice(0, 3).map((image, index) => (
+        <img
+          key={index}
+          src={`${process.env.REACT_APP_API_URL}/images/products/${image}`}
+          alt={`${product.name} ${index + 1}`}
+          className={`inline-block h-10 w-10 rounded-full border-2 border-white object-cover ${
+            index === 0 ? 'z-30' : index === 1 ? 'z-20' : 'z-10'
+          }`}
+          onError={(e) => {
+            e.target.onerror = null;
+            e.target.src = 'https://via.placeholder.com/40';
+          }}
+        />
+      ))}
+      {product.images?.length > 3 && (
+        <span className="flex h-10 w-10 items-center justify-center rounded-full border-2 border-white bg-gray-200 text-xs font-medium text-gray-500">
+          +{product.images.length - 3}
+        </span>
+      )}
+    </div>
+    <div className="ml-4">
+      <div className="text-sm font-medium text-gray-900">{product.name}</div>
+      <div className="text-sm text-gray-500">{product.brand?.name}</div>
+    </div>
+  </div>
+</td>
                     <td className="px-6 py-4 text-sm text-gray-500">
                       {product.category?.name}
                     </td>

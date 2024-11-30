@@ -1,45 +1,43 @@
-import React, { useState } from 'react';
+// components/product/ProductDetail.js
+import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { Heart, ShoppingCart, Star, Truck, Shield, ArrowLeft, Plus, Minus } from 'lucide-react';
+import { 
+  Heart, 
+  ShoppingCart, 
+  Star, 
+  Truck, 
+  Shield, 
+  ArrowLeft, 
+  Plus, 
+  Minus,
+  Loader
+} from 'lucide-react';
+import api from '../../services/api';
+import { toast } from 'react-hot-toast';
 
 const ProductDetail = () => {
   const { id } = useParams();
   const navigate = useNavigate();
+  const [product, setProduct] = useState(null);
+  const [loading, setLoading] = useState(true);
   const [quantity, setQuantity] = useState(1);
-
-  // Dummy product data - replace with real data from API
-  const product = {
-    id: 1,
-    name: 'HD 660S',
-    brand: 'Sennheiser',
-    price: 499.99,
-    rating: 4.8,
-    reviews: 124,
-    description: 'High-end open-back headphones for audiophiles. Features exceptional detail and natural, spatial sound reproduction.',
-    longDescription: `The HD 660S continues the legacy of Sennheiser's HD 600 series, delivering high-fidelity sound in a comfortable, open-back design. Key features include:
-    
-    - High-quality open-back design
-    - 150-ohm impedance for optimal performance
-    - Improved transducer design for detailed, accurate sound
-    - Detachable cable with 6.35mm and 4.4mm connections
-    - Comfortable, adjustable headband
-    - Durable construction for long-term use`,
-    specifications: [
-      { name: 'Impedance', value: '150 ohm' },
-      { name: 'Frequency Response', value: '10 - 41,000 Hz' },
-      { name: 'Sound Pressure Level', value: '104 dB' },
-      { name: 'Weight', value: '260g' }
-    ],
-    images: [
-      '/images/products/hd660s.jpg',
-      '/images/products/hd660s-2.jpg',
-      '/images/products/hd660s-3.jpg'
-    ],
-    stock: 10,
-    inWishlist: false
-  };
-
   const [selectedImage, setSelectedImage] = useState(0);
+
+  useEffect(() => {
+    const fetchProduct = async () => {
+      try {
+        const response = await api.get(`/products/${id}`);
+        setProduct(response.data.data);
+      } catch (error) {
+        toast.error('Failed to load product details');
+        navigate('/shop');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchProduct();
+  }, [id, navigate]);
 
   const handleQuantityChange = (value) => {
     const newQuantity = quantity + value;
@@ -50,8 +48,32 @@ const ProductDetail = () => {
 
   const handleAddToCart = () => {
     // Add to cart logic here
-    console.log('Added to cart:', { productId: id, quantity });
+    toast.success('Added to cart');
   };
+
+  if (loading) {
+    return (
+      <div className="flex justify-center items-center min-h-screen">
+        <Loader className="w-8 h-8 animate-spin text-indigo-600" />
+      </div>
+    );
+  }
+
+  if (!product) {
+    return (
+      <div className="container mx-auto px-4 py-8 mt-16">
+        <div className="text-center">
+          <h2 className="text-2xl font-bold text-gray-900">Product not found</h2>
+          <button
+            onClick={() => navigate('/shop')}
+            className="mt-4 text-indigo-600 hover:text-indigo-800"
+          >
+            Return to Shop
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="container mx-auto px-4 py-8 mt-16">
@@ -69,9 +91,13 @@ const ProductDetail = () => {
         <div className="space-y-4">
           <div className="aspect-w-1 aspect-h-1 w-full">
             <img
-              src={product.images[selectedImage]}
+              src={`${process.env.REACT_APP_API_URL}/images/products/${product.images[selectedImage]}`}
               alt={product.name}
               className="w-full h-96 object-cover rounded-lg"
+              onError={(e) => {
+                e.target.onerror = null;
+                e.target.src = 'https://via.placeholder.com/400x400?text=Product+Image';
+              }}
             />
           </div>
           <div className="grid grid-cols-4 gap-4">
@@ -84,9 +110,13 @@ const ProductDetail = () => {
                 }`}
               >
                 <img
-                  src={image}
+                  src={`${process.env.REACT_APP_API_URL}/images/products/${image}`}
                   alt={`${product.name} ${index + 1}`}
                   className="w-full h-full object-cover"
+                  onError={(e) => {
+                    e.target.onerror = null;
+                    e.target.src = 'https://via.placeholder.com/100x100?text=Thumbnail';
+                  }}
                 />
               </button>
             ))}
@@ -97,34 +127,43 @@ const ProductDetail = () => {
         <div>
           <div className="mb-6">
             <h1 className="text-3xl font-bold text-gray-900">{product.name}</h1>
-            <p className="text-lg text-gray-600 mt-1">{product.brand}</p>
-          </div>
-
-          <div className="flex items-center mb-6">
-            <div className="flex items-center">
-              {[...Array(5)].map((_, index) => (
-                <Star
-                  key={index}
-                  className={`w-5 h-5 ${
-                    index < Math.floor(product.rating)
-                      ? 'text-yellow-400 fill-current'
-                      : 'text-gray-300'
-                  }`}
-                />
-              ))}
-            </div>
-            <p className="ml-2 text-sm text-gray-600">
-              {product.rating} ({product.reviews} reviews)
-            </p>
+            <p className="text-lg text-gray-600 mt-1">{product.brand?.name}</p>
+            <p className="text-sm text-gray-500">Category: {product.category?.name}</p>
           </div>
 
           <div className="mb-6">
-            <p className="text-3xl font-bold text-gray-900">
-              ${product.price.toFixed(2)}
-            </p>
-            <p className="text-sm text-gray-600 mt-1">
-              Free shipping on orders over $500
-            </p>
+            <div className="flex items-baseline space-x-4">
+              <p className="text-3xl font-bold text-gray-900">
+                ${product.price.toFixed(2)}
+              </p>
+              {product.comparePrice && product.comparePrice > product.price && (
+                <p className="text-xl text-gray-500 line-through">
+                  ${product.comparePrice.toFixed(2)}
+                </p>
+              )}
+            </div>
+            {product.comparePrice && product.comparePrice > product.price && (
+              <p className="text-sm text-green-600 mt-1">
+                Save ${(product.comparePrice - product.price).toFixed(2)} ({Math.round((1 - product.price/product.comparePrice) * 100)}% off)
+              </p>
+            )}
+          </div>
+
+          {/* Stock Status */}
+          <div className="mb-6">
+            <div className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-medium
+              ${product.stock > product.lowStockThreshold
+                ? 'bg-green-100 text-green-800'
+                : product.stock > 0
+                ? 'bg-yellow-100 text-yellow-800'
+                : 'bg-red-100 text-red-800'
+              }`}
+            >
+              {product.status}
+              <span className="ml-2 text-xs">
+                ({product.stock} available)
+              </span>
+            </div>
           </div>
 
           <div className="mb-6">
@@ -132,10 +171,29 @@ const ProductDetail = () => {
             <p className="text-gray-600">{product.description}</p>
           </div>
 
+          {/* Specifications */}
+          {product.specifications && product.specifications.length > 0 && (
+            <div className="mb-6">
+              <h2 className="text-lg font-semibold mb-4">Specifications</h2>
+              <div className="grid grid-cols-2 gap-4">
+                {product.specifications.map((spec) => (
+                  <div key={spec.specification._id} className="border-b border-gray-200 pb-2">
+                    <p className="text-sm text-gray-600">{spec.specification.displayName}</p>
+                    <p className="font-medium">
+                      {spec.value}
+                      {spec.specification.unit && ` ${spec.specification.unit}`}
+                    </p>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Shipping & Warranty Info */}
           <div className="mb-6 space-y-4">
             <div className="flex items-center text-gray-600">
               <Truck className="w-5 h-5 mr-2" />
-              <span>Free shipping worldwide</span>
+              <span>Free shipping on orders over $500</span>
             </div>
             <div className="flex items-center text-gray-600">
               <Shield className="w-5 h-5 mr-2" />
@@ -143,67 +201,61 @@ const ProductDetail = () => {
             </div>
           </div>
 
-          <div className="mb-6">
-            <div className="flex items-center space-x-4">
-              <div className="flex items-center border border-gray-300 rounded-md">
-                <button
-                  onClick={() => handleQuantityChange(-1)}
-                  className="p-2 hover:bg-gray-100"
-                  disabled={quantity <= 1}
-                >
-                  <Minus className="w-5 h-5" />
-                </button>
-                <span className="px-4 py-2">{quantity}</span>
-                <button
-                  onClick={() => handleQuantityChange(1)}
-                  className="p-2 hover:bg-gray-100"
-                  disabled={quantity >= product.stock}
-                >
-                  <Plus className="w-5 h-5" />
-                </button>
+          {/* Quantity Selector */}
+          {product.stock > 0 && (
+            <div className="mb-6">
+              <div className="flex items-center space-x-4">
+                <div className="flex items-center border border-gray-300 rounded-md">
+                  <button
+                    onClick={() => handleQuantityChange(-1)}
+                    className="p-2 hover:bg-gray-100 disabled:opacity-50"
+                    disabled={quantity <= 1}
+                  >
+                    <Minus className="w-5 h-5" />
+                  </button>
+                  <input
+                    type="number"
+                    value={quantity}
+                    onChange={(e) => {
+                      const val = parseInt(e.target.value);
+                      if (val >= 1 && val <= product.stock) {
+                        setQuantity(val);
+                      }
+                    }}
+                    className="w-16 text-center border-x px-2 py-1"
+                  />
+                  <button
+                    onClick={() => handleQuantityChange(1)}
+                    className="p-2 hover:bg-gray-100 disabled:opacity-50"
+                    disabled={quantity >= product.stock}
+                  >
+                    <Plus className="w-5 h-5" />
+                  </button>
+                </div>
               </div>
-              <p className="text-sm text-gray-600">
-                {product.stock} units available
-              </p>
             </div>
-          </div>
+          )}
 
+          {/* Action Buttons */}
           <div className="flex space-x-4">
             <button
               onClick={handleAddToCart}
-              className="flex-1 bg-indigo-600 text-white px-6 py-3 rounded-md hover:bg-indigo-700 flex items-center justify-center"
+              disabled={product.stock === 0}
+              className={`flex-1 px-6 py-3 rounded-md flex items-center justify-center
+                ${product.stock === 0 
+                  ? 'bg-gray-400 cursor-not-allowed' 
+                  : 'bg-indigo-600 hover:bg-indigo-700'} 
+                text-white`}
             >
               <ShoppingCart className="w-5 h-5 mr-2" />
-              Add to Cart
+              {product.stock === 0 ? 'Out of Stock' : 'Add to Cart'}
             </button>
-            <button className="px-6 py-3 rounded-md border border-gray-300 hover:bg-gray-50">
-              <Heart className="w-5 h-5 text-gray-600" />
+            <button 
+              className="px-6 py-3 rounded-md border border-gray-300 hover:bg-gray-50"
+              title="Add to Wishlist"
+            >
+              <Heart className={`w-5 h-5 ${product.inWishlist ? 'fill-current text-red-500' : 'text-gray-600'}`} />
             </button>
-          </div>
-
-          {/* Specifications */}
-          <div className="mt-8">
-            <h2 className="text-lg font-semibold mb-4">Specifications</h2>
-            <div className="grid grid-cols-2 gap-4">
-              {product.specifications.map((spec) => (
-                <div key={spec.name} className="border-b border-gray-200 pb-2">
-                  <p className="text-sm text-gray-600">{spec.name}</p>
-                  <p className="font-medium">{spec.value}</p>
-                </div>
-              ))}
-            </div>
-          </div>
-
-          {/* Detailed Description */}
-          <div className="mt-8">
-            <h2 className="text-lg font-semibold mb-4">Product Details</h2>
-            <div className="prose prose-sm text-gray-600">
-              {product.longDescription.split('\n').map((paragraph, index) => (
-                <p key={index} className="mb-4">
-                  {paragraph}
-                </p>
-              ))}
-            </div>
           </div>
         </div>
       </div>

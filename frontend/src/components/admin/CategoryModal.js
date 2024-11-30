@@ -1,5 +1,7 @@
+// components/admin/CategoryModal.js
 import React, { useState, useEffect } from 'react';
 import { X } from 'lucide-react';
+import { toast } from 'react-hot-toast';
 
 const CategoryModal = ({ category, onSave, onClose }) => {
   const [formData, setFormData] = useState({
@@ -25,7 +27,6 @@ const CategoryModal = ({ category, onSave, onClose }) => {
     }
   }, [category]);
 
-  // Handle image preview
   const handleImageChange = (e) => {
     const file = e.target.files[0];
     if (file) {
@@ -38,17 +39,14 @@ const CategoryModal = ({ category, onSave, onClose }) => {
     e.preventDefault();
     const data = new FormData();
 
-    // Append basic form data
     data.append('name', formData.name);
     data.append('description', formData.description);
     data.append('status', formData.status);
 
-    // Append image only if a new one is selected
     if (formData.image) {
       data.append('image', formData.image);
     }
 
-    // If editing, send current image name if no new image is selected
     if (category && !formData.image && currentImage) {
       data.append('currentImage', currentImage);
     }
@@ -56,7 +54,6 @@ const CategoryModal = ({ category, onSave, onClose }) => {
     onSave(data);
   };
 
-  // Cleanup preview URL when component unmounts
   useEffect(() => {
     return () => {
       if (previewImage) {
@@ -72,14 +69,11 @@ const CategoryModal = ({ category, onSave, onClose }) => {
           <h2 className="text-xl font-semibold">
             {category ? 'Edit Category' : 'Add Category'}
           </h2>
-          <button 
-            onClick={onClose}
-            className="text-gray-500 hover:text-gray-700"
-          >
+          <button onClick={onClose} className="text-gray-500 hover:text-gray-700">
             <X className="w-6 h-6" />
           </button>
         </div>
-        
+
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
             <label className="block text-sm font-medium mb-1">Name</label>
@@ -91,7 +85,7 @@ const CategoryModal = ({ category, onSave, onClose }) => {
               required
             />
           </div>
-          
+
           <div>
             <label className="block text-sm font-medium mb-1">Description</label>
             <textarea
@@ -102,7 +96,7 @@ const CategoryModal = ({ category, onSave, onClose }) => {
               required
             />
           </div>
-          
+
           <div>
             <label className="block text-sm font-medium mb-1">Status</label>
             <select
@@ -114,10 +108,9 @@ const CategoryModal = ({ category, onSave, onClose }) => {
               <option value="Inactive">Inactive</option>
             </select>
           </div>
-          
+
           <div>
             <label className="block text-sm font-medium mb-1">Image</label>
-            {/* Current image preview */}
             {(currentImage || previewImage) && (
               <div className="mb-2">
                 <img
@@ -134,7 +127,7 @@ const CategoryModal = ({ category, onSave, onClose }) => {
               accept="image/*"
             />
           </div>
-          
+
           <div className="flex justify-end space-x-2 mt-6">
             <button
               type="button"
