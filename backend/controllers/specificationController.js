@@ -1,8 +1,65 @@
 // controllers/specificationController.js
-const { Specification } = require('../models/Specification');
+const Specification = require('../models/Specification');
 const Category = require('../models/Category');
 
-// Get all specifications
+exports.createSpecification = async (req, res) => {
+  try {
+    console.log('Creating specification:', req.body);
+
+    // Validate category exists
+    const category = await Category.findById(req.body.category);
+    if (!category) {
+      return res.status(404).json({
+        status: 'fail',
+        message: 'Category not found'
+      });
+    }
+
+    // Validate type and options
+    if (req.body.type === 'select' && (!req.body.options || req.body.options.length === 0)) {
+      return res.status(400).json({
+        status: 'fail',
+        message: 'Select type specification must have options'
+      });
+    }
+
+    // Create specification with cleaned data
+    const specificationData = {
+      category: req.body.category,
+      name: req.body.name.trim(),
+      displayName: req.body.displayName.trim(),
+      type: req.body.type,
+      isRequired: req.body.isRequired || false,
+      order: req.body.order || 0
+    };
+
+    // Add optional fields if present
+    if (req.body.unit) {
+      specificationData.unit = req.body.unit.trim();
+    }
+
+    if (req.body.options && req.body.type === 'select') {
+      specificationData.options = Array.isArray(req.body.options) 
+        ? req.body.options 
+        : req.body.options.split(',').map(opt => opt.trim());
+    }
+
+    const specification = await Specification.create(specificationData);
+
+    res.status(201).json({
+      status: 'success',
+      data: specification
+    });
+  } catch (error) {
+    console.error('Specification creation error:', error);
+    res.status(400).json({
+      status: 'fail',
+      message: error.message,
+      details: error.errors || {}
+    });
+  }
+};
+
 exports.getAllSpecifications = async (req, res) => {
   try {
     const specifications = await Specification.find()
@@ -15,17 +72,18 @@ exports.getAllSpecifications = async (req, res) => {
     });
   } catch (error) {
     res.status(400).json({
-      status: 'error',
+      status: 'fail',
       message: error.message
     });
   }
 };
 
-// Get specifications by category
 exports.getSpecificationsByCategory = async (req, res) => {
   try {
-    const specifications = await Specification.findByCategory(req.params.categoryId)
-      .populate('category', 'name');
+    const specifications = await Specification.find({ 
+      category: req.params.categoryId,
+      status: 'Active'
+    }).sort('order');
     
     res.status(200).json({
       status: 'success',
@@ -33,65 +91,46 @@ exports.getSpecificationsByCategory = async (req, res) => {
     });
   } catch (error) {
     res.status(400).json({
-      status: 'error',
+      status: 'fail',
       message: error.message
     });
   }
 };
 
-// Create new specification
-exports.createSpecification = async (req, res) => {
+exports.updateSpecification = async (req, res) => {
   try {
-    // Validate category exists
-    const category = await Category.findById(req.body.category);
-    if (!category) {
-      return res.status(404).json({
-        status: 'error',
-        message: 'Category not found'
+    // Validate type and options if type is being changed to 'select'
+    if (req.body.type === 'select' && (!req.body.options || req.body.options.length === 0)) {
+      return res.status(400).json({
+        status: 'fail',
+        message: 'Select type specification must have options'
       });
     }
 
-    // Create specification
-    const specification = await Specification.create(req.body);
+    const updates = {
+      ...req.body,
+      // Clean string inputs
+      ...(req.body.name && { name: req.body.name.trim() }),
+      ...(req.body.displayName && { displayName: req.body.displayName.trim() }),
+      ...(req.body.unit && { unit: req.body.unit.trim() })
+    };
 
-    res.status(201).json({
-      status: 'success',
-      data: specification
-    });
-  } catch (error) {
-    res.status(400).json({
-      status: 'error',
-      message: error.message
-    });
-  }
-};
-
-// Update specification
-exports.updateSpecification = async (req, res) => {
-  try {
-    // If category is being updated, validate it exists
-    if (req.body.category) {
-      const category = await Category.findById(req.body.category);
-      if (!category) {
-        return res.status(404).json({
-          status: 'error',
-          message: 'Category not found'
-        });
-      }
+    // Handle options specially for select type
+    if (req.body.options && req.body.type === 'select') {
+      updates.options = Array.isArray(req.body.options)
+        ? req.body.options
+        : req.body.options.split(',').map(opt => opt.trim());
     }
 
     const specification = await Specification.findByIdAndUpdate(
       req.params.id,
-      req.body,
-      {
-        new: true,
-        runValidators: true
-      }
+      updates,
+      { new: true, runValidators: true }
     );
 
     if (!specification) {
       return res.status(404).json({
-        status: 'error',
+        status: 'fail',
         message: 'Specification not found'
       });
     }
@@ -102,81 +141,43 @@ exports.updateSpecification = async (req, res) => {
     });
   } catch (error) {
     res.status(400).json({
-      status: 'error',
+      status: 'fail',
       message: error.message
     });
   }
 };
 
-// Delete specification
 exports.deleteSpecification = async (req, res) => {
   try {
     const specification = await Specification.findById(req.params.id);
     
     if (!specification) {
       return res.status(404).json({
-        status: 'error',
+        status: 'fail',
         message: 'Specification not found'
       });
     }
 
-    // Instead of deleting, set status to inactive
+    // Soft delete - just change status to inactive
     specification.status = 'Inactive';
     await specification.save();
 
     res.status(200).json({
       status: 'success',
-      message: 'Specification has been deactivated'
+      message: 'Specification deactivated successfully'
     });
   } catch (error) {
     res.status(400).json({
-      status: 'error',
+      status: 'fail',
       message: error.message
     });
   }
 };
 
-// Bulk create specifications
-exports.bulkCreateSpecifications = async (req, res) => {
-  try {
-    const { categoryId, specifications } = req.body;
-
-    // Validate category exists
-    const category = await Category.findById(categoryId);
-    if (!category) {
-      return res.status(404).json({
-        status: 'error',
-        message: 'Category not found'
-      });
-    }
-
-    // Add category to each specification
-    const specsWithCategory = specifications.map(spec => ({
-      ...spec,
-      category: categoryId
-    }));
-
-    // Create all specifications
-    const createdSpecs = await Specification.insertMany(specsWithCategory);
-
-    res.status(201).json({
-      status: 'success',
-      data: createdSpecs
-    });
-  } catch (error) {
-    res.status(400).json({
-      status: 'error',
-      message: error.message
-    });
-  }
-};
-
-// Reorder specifications
 exports.reorderSpecifications = async (req, res) => {
   try {
     const { specifications } = req.body;
     
-    // Update order of each specification
     await Promise.all(
       specifications.map(({ id, order }) => 
         Specification.findByIdAndUpdate(id, { order })
@@ -189,7 +190,7 @@ exports.reorderSpecifications = async (req, res) => {
     });
   } catch (error) {
     res.status(400).json({
-      status: 'error',
+      status: 'fail',
       message: error.message
     });
   }

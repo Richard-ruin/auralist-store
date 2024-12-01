@@ -10,12 +10,13 @@ const CategorySpecificationModal = ({ category, onClose }) => {
   const [newSpec, setNewSpec] = useState({
     name: '',
     displayName: '',
-    type: 'text',
+    type: 'text',      // default type
     unit: '',
+    options: [],
     isRequired: false,
-    order: 0,
-    options: []
+    order: 0
   });
+  
 
   useEffect(() => {
     const fetchSpecifications = async () => {
@@ -31,6 +32,7 @@ const CategorySpecificationModal = ({ category, onClose }) => {
 
     fetchSpecifications();
   }, [category._id]);
+  
 
   const handleAddSpecification = async () => {
     try {
@@ -107,18 +109,18 @@ const CategorySpecificationModal = ({ category, onClose }) => {
     onChange={(e) => setNewSpec({...newSpec, type: e.target.value})}
     className="w-full border rounded-md p-2"
   >
-    <option value="string">String (Single line)</option>
-    <option value="textarea">Text Area (Multi line)</option>
+    <option value="varchar">Varchar (Any Characters)</option>
+    <option value="text">Text (Plain Text)</option>
     <option value="number">Number</option>
     <option value="select">Select</option>
     <option value="boolean">Boolean</option>
   </select>
   <p className="text-xs text-gray-500 mt-1">
-    {newSpec.type === 'string' && 'Single line text input (e.g., "Model Name", "Color")'}
-    {newSpec.type === 'textarea' && 'Multi-line text input (e.g., "Features", "Package Contents")'}
-    {newSpec.type === 'number' && 'Numeric input with optional unit'}
-    {newSpec.type === 'select' && 'Dropdown with predefined options'}
-    {newSpec.type === 'boolean' && 'Yes/No choice'}
+    {newSpec.type === 'varchar' && 'Can contain any characters including numbers and symbols'}
+    {newSpec.type === 'text' && 'For plain text descriptions'}
+    {newSpec.type === 'number' && 'For numerical values only'}
+    {newSpec.type === 'select' && 'For predefined options'}
+    {newSpec.type === 'boolean' && 'For yes/no values'}
   </p>
 </div>
             <div>

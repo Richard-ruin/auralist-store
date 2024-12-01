@@ -2,12 +2,11 @@
 const express = require('express');
 const router = express.Router();
 const { 
+  createSpecification,
   getAllSpecifications,
   getSpecificationsByCategory,
-  createSpecification,
   updateSpecification,
   deleteSpecification,
-  bulkCreateSpecifications,
   reorderSpecifications
 } = require('../controllers/specificationController');
 const { protect, restrictTo } = require('../middleware/auth');
@@ -20,10 +19,15 @@ router.get('/category/:categoryId', getSpecificationsByCategory);
 router.use(protect);
 router.use(restrictTo('admin'));
 
-router.post('/', createSpecification);
-router.post('/bulk', bulkCreateSpecifications);
+router
+  .route('/')
+  .post(createSpecification);
+
+router
+  .route('/:id')
+  .patch(updateSpecification)
+  .delete(deleteSpecification);
+
 router.post('/reorder', reorderSpecifications);
-router.patch('/:id', updateSpecification);
-router.delete('/:id', deleteSpecification);
 
 module.exports = router;

@@ -8,7 +8,7 @@ const HeroSection = () => {
     <section className="relative h-96 bg-gray-900 mt-16">
       <div 
         className="absolute inset-0 bg-cover bg-center"
-        style={{ backgroundImage: "url('/images/products/1.jpg')" }}
+        style={{ backgroundImage: "url('/images/product/1.jpg')" }}
       />
       <div className="absolute inset-0 bg-gradient-to-r from-black to-transparent opacity-60" />
       <div className="container mx-auto px-4 h-full flex items-center relative">

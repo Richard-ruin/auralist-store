@@ -1,7 +1,7 @@
 // pages/Shop.js
 import React, { useState, useEffect } from 'react';
 import ProductCard from '../components/product/ProductCard';
-import { Filter, Search, Sliders } from 'lucide-react';
+import { Filter, Search } from 'lucide-react';
 import api from '../services/api';
 
 const ShopPage = () => {
@@ -15,7 +15,7 @@ const ShopPage = () => {
     brand: '',
     minPrice: '',
     maxPrice: '',
-    sort: 'newest'
+    sort: 'newest',
   });
   const [showMobileFilters, setShowMobileFilters] = useState(false);
 
@@ -25,7 +25,7 @@ const ShopPage = () => {
         const [productsRes, categoriesRes, brandsRes] = await Promise.all([
           api.get('/products'),
           api.get('/categories'),
-          api.get('/brands')
+          api.get('/brands'),
         ]);
 
         setProducts(productsRes.data.data);
@@ -42,14 +42,16 @@ const ShopPage = () => {
   }, []);
 
   const handleFilterChange = (key, value) => {
-    setFilters(prev => ({ ...prev, [key]: value }));
+    setFilters((prev) => ({ ...prev, [key]: value }));
   };
 
-  const filteredProducts = products.filter(product => {
+  const filteredProducts = products.filter((product) => {
     let matches = true;
 
     if (filters.search) {
-      matches = matches && product.name.toLowerCase().includes(filters.search.toLowerCase());
+      matches =
+        matches &&
+        product.name.toLowerCase().includes(filters.search.toLowerCase());
     }
 
     if (filters.category) {
@@ -92,7 +94,7 @@ const ShopPage = () => {
   }
 
   return (
-    <div className="container mx-auto px-4 py-8">
+    <div className="pt-20 container mx-auto px-4 py-8">
       {/* Mobile Filter Button */}
       <div className="lg:hidden mb-4">
         <button
@@ -106,7 +108,11 @@ const ShopPage = () => {
 
       <div className="flex flex-col lg:flex-row gap-8">
         {/* Filters Sidebar */}
-        <div className={`lg:w-1/4 ${showMobileFilters ? 'block' : 'hidden lg:block'}`}>
+        <div
+          className={`lg:w-1/4 ${
+            showMobileFilters ? 'block' : 'hidden lg:block'
+          }`}
+        >
           <div className="bg-white rounded-lg shadow p-6 space-y-6">
             {/* Search */}
             <div>
@@ -138,14 +144,16 @@ const ShopPage = () => {
                   />
                   <label htmlFor="all-categories">All Categories</label>
                 </div>
-                {categories.map(category => (
+                {categories.map((category) => (
                   <div key={category._id} className="flex items-center">
                     <input
                       type="radio"
                       id={category._id}
                       name="category"
                       checked={filters.category === category._id}
-                      onChange={() => handleFilterChange('category', category._id)}
+                      onChange={() =>
+                        handleFilterChange('category', category._id)
+                      }
                       className="mr-2"
                     />
                     <label htmlFor={category._id}>{category.name}</label>
@@ -169,14 +177,16 @@ const ShopPage = () => {
                   />
                   <label htmlFor="all-brands">All Brands</label>
                 </div>
-                {brands.map(brand => (
+                {brands.map((brand) => (
                   <div key={brand._id} className="flex items-center">
                     <input
                       type="radio"
                       id={brand._id}
                       name="brand"
                       checked={filters.brand === brand._id}
-                      onChange={() => handleFilterChange('brand', brand._id)}
+                      onChange={() =>
+                        handleFilterChange('brand', brand._id)
+                      }
                       className="mr-2"
                     />
                     <label htmlFor={brand._id}>{brand.name}</label>
@@ -193,7 +203,9 @@ const ShopPage = () => {
                   type="number"
                   placeholder="Min"
                   value={filters.minPrice}
-                  onChange={(e) => handleFilterChange('minPrice', e.target.value)}
+                  onChange={(e) =>
+                    handleFilterChange('minPrice', e.target.value)
+                  }
                   className="w-full border rounded-lg px-3 py-2"
                 />
                 <span>-</span>
@@ -201,7 +213,9 @@ const ShopPage = () => {
                   type="number"
                   placeholder="Max"
                   value={filters.maxPrice}
-                  onChange={(e) => handleFilterChange('maxPrice', e.target.value)}
+                  onChange={(e) =>
+                    handleFilterChange('maxPrice', e.target.value)
+                  }
                   className="w-full border rounded-lg px-3 py-2"
                 />
               </div>
@@ -227,7 +241,7 @@ const ShopPage = () => {
 
           {/* Products */}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {sortedProducts.map(product => (
+            {sortedProducts.map((product) => (
               <ProductCard key={product._id} product={product} />
             ))}
           </div>

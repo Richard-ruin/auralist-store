@@ -1,20 +1,6 @@
 // models/Specification.js
 const mongoose = require('mongoose');
 
-// Schema untuk tiap nilai spesifikasi pada produk
-const specificationValueSchema = new mongoose.Schema({
-  specification: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: 'Specification',
-    required: true
-  },
-  value: {
-    type: mongoose.Schema.Types.Mixed,
-    required: true
-  }
-});
-
-// Schema utama untuk Specification
 const specificationSchema = new mongoose.Schema({
   category: {
     type: mongoose.Schema.Types.ObjectId,
@@ -33,8 +19,8 @@ const specificationSchema = new mongoose.Schema({
   },
   type: {
     type: String,
-    enum: ['string', 'textarea', 'number', 'select', 'boolean'],
-    default: 'string'
+    enum: ['text', 'number', 'select', 'boolean', 'varchar'],  // Tambahkan 'varchar'
+    default: 'text'
   },
   unit: {
     type: String,
@@ -60,19 +46,17 @@ const specificationSchema = new mongoose.Schema({
   timestamps: true
 });
 
-// Index untuk pencarian dan pengurutan
+// Indexes
 specificationSchema.index({ category: 1, order: 1 });
 specificationSchema.index({ name: 1, category: 1 }, { unique: true });
 
-// Statics method untuk mendapatkan spesifikasi by category
-specificationSchema.statics.findByCategory = function(categoryId) {
-  return this.find({ 
-    category: categoryId,
-    status: 'Active' 
-  }).sort('order');
-};
+// Middleware untuk validasi
+specificationSchema.pre('save', function(next) {
+  // Jika type adalah 'select' tapi tidak ada options
+  if (this.type === 'select' && (!this.options || this.options.length === 0)) {
+    next(new Error('Select type specification must have options'));
+  }
+  next();
+});
 
-const Specification = mongoose.model('Specification', specificationSchema);
-const SpecificationValue = mongoose.model('SpecificationValue', specificationValueSchema);
-
-module.exports = { Specification, SpecificationValue };
+module.exports = mongoose.model('Specification', specificationSchema);

@@ -406,100 +406,100 @@ const ProductModal = ({ product, onClose, onSuccess }) => {
           </div>
 
           {/* Specifications */}
-          {categorySpecs.length > 0 && (
-            <div>
-              <h3 className="text-lg font-medium mb-4">Specifications</h3>
-              <div className="grid grid-cols-2 gap-4">
-              {categorySpecs.map((spec) => (
-  <div key={spec._id}>
-    <label className="block text-sm font-medium mb-1">
-      {spec.displayName}
-      {spec.isRequired && <span className="text-red-500">*</span>}
-    </label>
+{categorySpecs.length > 0 && (
+  <div>
+    <h3 className="text-lg font-medium mb-4">Specifications</h3>
+    <div className="grid grid-cols-2 gap-4">
+      {categorySpecs.map((spec) => (
+        <div key={spec._id}>
+          <label className="block text-sm font-medium mb-1">
+            {spec.displayName}
+            {spec.isRequired && <span className="text-red-500">*</span>}
+          </label>
 
-    {spec.type === 'select' ? (
-      <select
-        value={specValues[spec._id] || ''}
-        onChange={(e) => setSpecValues({
-          ...specValues,
-          [spec._id]: e.target.value
-        })}
-        className="w-full border rounded-md p-2"
-        required={spec.isRequired}
-      >
-        <option value="">Select {spec.displayName}</option>
-        {spec.options.map((option, idx) => (
-          <option key={idx} value={option}>{option}</option>
-        ))}
-      </select>
-    ) : spec.type === 'boolean' ? (
-      <select
-        value={specValues[spec._id] || ''}
-        onChange={(e) => setSpecValues({
-          ...specValues,
-          [spec._id]: e.target.value === 'true'
-        })}
-        className="w-full border rounded-md p-2"
-        required={spec.isRequired}
-      >
-        <option value="">Select {spec.displayName}</option>
-        <option value="true">Yes</option>
-        <option value="false">No</option>
-      </select>
-    ) : spec.type === 'number' ? (
-      <div className="flex items-center">
-        <input
-          type="number"
-          value={specValues[spec._id] || ''}
-          onChange={(e) => setSpecValues({
-            ...specValues,
-            [spec._id]: e.target.value
-          })}
-          className="w-full border rounded-md p-2"
-          required={spec.isRequired}
-          placeholder={`Enter ${spec.displayName}`}
-        />
-        {spec.unit && (
-          <span className="ml-2 text-gray-500">{spec.unit}</span>
-        )}
-      </div>
-    ) : spec.type === 'textarea' ? (
-      <textarea
-        value={specValues[spec._id] || ''}
-        onChange={(e) => setSpecValues({
-          ...specValues,
-          [spec._id]: e.target.value
-        })}
-        className="w-full border rounded-md p-2"
-        required={spec.isRequired}
-        placeholder={`Enter ${spec.displayName}`}
-        rows="3"
-      />
-    ) : (
-      // String type (default)
-      <input
-        type="text"
-        value={specValues[spec._id] || ''}
-        onChange={(e) => setSpecValues({
-          ...specValues,
-          [spec._id]: e.target.value
-        })}
-        className="w-full border rounded-md p-2"
-        required={spec.isRequired}
-        placeholder={`Enter ${spec.displayName}`}
-      />
-    )}
-    
-    {spec.unit && spec.type !== 'number' && (
-      <span className="text-sm text-gray-500 mt-1">
-        Unit: {spec.unit}
-      </span>
-    )}
-  </div>
-))}
+          {spec.type === 'varchar' ? (
+            <input
+              type="text"
+              value={specValues[spec._id] || ''}
+              onChange={(e) => setSpecValues({
+                ...specValues,
+                [spec._id]: e.target.value
+              })}
+              className="w-full border rounded-md p-2"
+              required={spec.isRequired}
+              placeholder={`Enter ${spec.displayName}`}
+            />
+          ) : spec.type === 'select' ? (
+            <select
+              value={specValues[spec._id] || ''}
+              onChange={(e) => setSpecValues({
+                ...specValues,
+                [spec._id]: e.target.value
+              })}
+              className="w-full border rounded-md p-2"
+              required={spec.isRequired}
+            >
+              <option value="">Select {spec.displayName}</option>
+              {spec.options.map((option, idx) => (
+                <option key={idx} value={option}>{option}</option>
+              ))}
+            </select>
+          ) : spec.type === 'boolean' ? (
+            <select
+              value={specValues[spec._id] || ''}
+              onChange={(e) => setSpecValues({
+                ...specValues,
+                [spec._id]: e.target.value === 'true'
+              })}
+              className="w-full border rounded-md p-2"
+              required={spec.isRequired}
+            >
+              <option value="">Select {spec.displayName}</option>
+              <option value="true">Yes</option>
+              <option value="false">No</option>
+            </select>
+          ) : spec.type === 'number' ? (
+            <div className="flex items-center">
+              <input
+                type="number"
+                value={specValues[spec._id] || ''}
+                onChange={(e) => setSpecValues({
+                  ...specValues,
+                  [spec._id]: e.target.value
+                })}
+                className="w-full border rounded-md p-2"
+                required={spec.isRequired}
+                placeholder={`Enter ${spec.displayName}`}
+              />
+              {spec.unit && (
+                <span className="ml-2 text-gray-500">{spec.unit}</span>
+              )}
             </div>
-          </div>
-        )}
+          ) : (
+            // For text type
+            <textarea
+              value={specValues[spec._id] || ''}
+              onChange={(e) => setSpecValues({
+                ...specValues,
+                [spec._id]: e.target.value
+              })}
+              className="w-full border rounded-md p-2"
+              required={spec.isRequired}
+              placeholder={`Enter ${spec.displayName}`}
+              rows="3"
+            />
+          )}
+          
+          {spec.unit && spec.type !== 'number' && (
+            <span className="text-sm text-gray-500 mt-1">
+              Unit: {spec.unit}
+            </span>
+          )}
+        </div>
+      ))}
+    </div>
+  </div>
+)}
 
         <div className="flex justify-end space-x-4">
           <button
