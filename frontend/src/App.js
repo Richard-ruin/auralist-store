@@ -30,7 +30,8 @@ import { CategoryProvider } from './context/CategoryContext';
 import { BrandProvider } from './context/BrandContext';
 import { ProductProvider } from './context/ProductContext';
 import { UserProvider } from './context/UserContext';
-
+import { PaymentProvider } from './context/PaymentContext';
+import { OrderProvider } from './context/OrderContext';
 const App = () => {
   return (
     <Router>
@@ -38,6 +39,8 @@ const App = () => {
         <BrandProvider>
         <ProductProvider>
           <UserProvider>
+            <PaymentProvider>
+              <OrderProvider>
       <Routes>
         {/* Auth Routes */}
         <Route path="/login" element={
@@ -88,6 +91,8 @@ const App = () => {
         {/* 404 Route */}
         <Route path="*" element={<NotFoundPage />} />
       </Routes>
+      </OrderProvider>
+      </PaymentProvider>
       </UserProvider>
       </ProductProvider>
       </BrandProvider>

@@ -5,17 +5,60 @@ import Profile from '../components/user/Profile';
 import Orders from '../components/user/Orders';
 import Wishlist from '../components/user/Wishlist';
 import AddressBook from '../components/user/AddressBook';
+import Payment from '../pages/Payment';
 
 const UserRoutes = () => {
   return (
-    <ProtectedRoute allowedRoles={['customer']}>
-      <Routes>
-        <Route path="/profile" element={<Profile />} />
-        <Route path="/orders" element={<Orders />} />
-        <Route path="/wishlist" element={<Wishlist />} />
-        <Route path="/address-book" element={<AddressBook />} />
-      </Routes>
-    </ProtectedRoute>
+    <Routes>
+      <Route 
+        path="/profile" 
+        element={
+          <ProtectedRoute>
+            <Profile />
+          </ProtectedRoute>
+        } 
+      />
+      <Route 
+        path="/orders" 
+        element={
+          <ProtectedRoute>
+            <Orders />
+          </ProtectedRoute>
+        } 
+      />
+      <Route 
+        path="/wishlist" 
+        element={
+          <ProtectedRoute>
+            <Wishlist />
+          </ProtectedRoute>
+        } 
+      />
+      <Route 
+        path="/address-book" 
+        element={
+          <ProtectedRoute>
+            <AddressBook />
+          </ProtectedRoute>
+        } 
+      />
+      <Route 
+        path="/payment" 
+        element={
+          <ProtectedRoute>
+            <Payment />
+          </ProtectedRoute>
+        } 
+      />
+      <Route 
+        path="/payment/:orderId" 
+        element={
+          <ProtectedRoute>
+            <Payment />
+          </ProtectedRoute>
+        } 
+      />
+    </Routes>
   );
 };
 

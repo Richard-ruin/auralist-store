@@ -11,6 +11,8 @@ const brandRoutes = require('./routes/brands');
 const productRoutes = require('./routes/products');
 const specificationRoutes = require('./routes/specifications');
 const userRoutes = require('./routes/users');
+const orderRoutes = require('./routes/orders');
+const paymentRoutes = require('./routes/payment');
 
 const corsOptions = {
   origin: process.env.CLIENT_URL || 'http://localhost:3000',
@@ -45,6 +47,8 @@ app.use('/api/brands', brandRoutes);
 app.use('/api/products', require('./routes/products'));
 app.use('/api/specifications', specificationRoutes); 
 app.use('/api/users', userRoutes);
+app.use('/api/orders', orderRoutes);
+app.use('/api/payments', paymentRoutes);
 //image
 app.use('/api/images', express.static('public/images'));
 
