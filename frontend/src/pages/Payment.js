@@ -50,28 +50,35 @@ const Payment = () => {
       try {
         let data;
         if (location.state?.order) {
+          console.log('Using location state order:', location.state.order);
           data = location.state.order;
         } else {
           const response = await orderService.getOrder(orderId);
+          console.log('Fetched order data:', response.data);
           data = response.data.data;
         }
-
+  
+        // Transform dan validasi data
         const transformedData = {
           ...data,
           items: data.items?.map(item => ({
-            ...item,
-            price: Number(item.price) || 0,
-            quantity: Number(item.quantity) || 1,
             product: {
-              ...item.product,
-              name: item.product?.name || 'Product Name',
-              price: Number(item.product?.price) || 0
-            }
+              _id: item.product._id,
+              name: item.product.name,
+              image: item.product.image,
+              price: item.product.price
+            },
+            quantity: Number(item.quantity) || 1,
+            price: Number(item.price) || 0,
+            total: (Number(item.price) || 0) * (Number(item.quantity) || 1)
           })) || [],
-          totalAmount: Number(data.totalAmount) || 0
+          totalAmount: Number(data.totalAmount) || 0,
+          currency: data.currency || 'USD'
         };
-
+  
+        console.log('Transformed order data:', transformedData);
         setOrderData(transformedData);
+  
       } catch (error) {
         console.error('Error fetching data:', error);
         setError(error.message || 'Failed to load order details');
@@ -80,7 +87,7 @@ const Payment = () => {
         setLoading(false);
       }
     };
-
+  
     fetchData();
   }, [orderId, location.state]);
 

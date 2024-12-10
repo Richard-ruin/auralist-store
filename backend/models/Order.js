@@ -23,28 +23,12 @@ const orderSchema = new mongoose.Schema({
       required: true
     }
   }],
-  shippingAddress: {
-    street: {
-      type: String,
-      required: true
-    },
-    city: {
-      type: String,
-      required: true
-    },
-    state: {
-      type: String,
-      required: true
-    },
-    postalCode: {
-      type: String,
-      required: true
-    },
-    country: {
-      type: String,
-      required: true
-    }
-  },
+  // Di model Order, update shippingAddress
+shippingAddress: {
+  type: mongoose.Schema.Types.ObjectId,
+  ref: 'Address',
+  required: true
+},
   paymentMethod: {
     type: String,
     enum: ['visa', 'mastercard', 'bri', 'bca', 'mandiri'],

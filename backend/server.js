@@ -13,6 +13,7 @@ const specificationRoutes = require('./routes/specifications');
 const userRoutes = require('./routes/users');
 const orderRoutes = require('./routes/orders');
 const paymentRoutes = require('./routes/payment');
+const addressRoutes = require('./routes/address');
 
 const corsOptions = {
   origin: process.env.CLIENT_URL || 'http://localhost:3000',
@@ -49,6 +50,8 @@ app.use('/api/specifications', specificationRoutes);
 app.use('/api/users', userRoutes);
 app.use('/api/orders', orderRoutes);
 app.use('/api/payments', paymentRoutes);
+app.use('/api/addresses', addressRoutes);
+
 //image
 app.use('/api/images', express.static('public/images'));
 

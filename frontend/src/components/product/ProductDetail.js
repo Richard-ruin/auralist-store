@@ -77,69 +77,66 @@ const ProductDetail = () => {
   const handleBuyNow = async () => {
     try {
       setBuyLoading(true);
-      
+  
+      // Format order data sesuai dengan model backend
       const orderData = {
         items: [{
-          product: product._id,
+          product: product._id, // Hanya kirim ID produk
           quantity: quantity,
           price: product.price
         }],
         shippingAddress: {
-          street: "Default Street",    
-          city: "Default City",        
-          state: "Default State",      
-          postalCode: "12345",         
-          country: "Default Country"   
+          street: "Will be updated",
+          city: "Will be updated",
+          state: "Will be updated",
+          postalCode: "00000",
+          country: "Will be updated"
         },
-        paymentMethod: "bca",          
-        totalAmount: product.price * quantity
+        totalAmount: product.price * quantity, // Hitung total amount
+        status: 'processing', // Set default status
       };
   
+      console.log('Sending order data:', orderData);
+  
+      // Create order using order service
       const response = await orderService.createOrder(orderData);
-      console.log('Order created successfully:', response.data);
+      console.log('Order creation response:', response);
   
-      // Extract order ID
-      const orderId = response.data?.order?._id || 
-                     response.data?.data?.order?._id || 
-                     response.data?.data?._id;
-  
-      if (!orderId) {
-        throw new Error('Could not find order ID in response');
+      // Check if order was created successfully
+      if (!response?.data?.data?._id) {
+        throw new Error('Failed to create order: Invalid response');
       }
   
-      console.log('Navigating to payment with order ID:', orderId);
+      const createdOrder = response.data.data;
   
-      // Use correct path with /user prefix
-      navigate(`/user/payment/${orderId}`, { 
-        state: { 
-          order: response.data?.data,
-          product: {
-            id: product._id,
-            name: product.name,
-            image: product.mainImage || (product.images && product.images[0]),
-            price: product.price,
-            quantity: quantity
+      // Navigate to payment page with complete data
+      navigate(`/user/payment/${createdOrder._id}`, {
+        state: {
+          order: {
+            ...createdOrder,
+            // Add product details for display
+            items: [{
+              product: {
+                _id: product._id,
+                name: product.name,
+                price: product.price,
+                image: product.mainImage || (product.images?.[0])
+              },
+              quantity: quantity,
+              price: product.price
+            }],
+            totalAmount: product.price * quantity,
+            currency: 'USD'
           }
         }
       });
   
     } catch (error) {
-      console.error('Error creating order:', error);
-      
-      if (error.response?.status === 401) {
-        toast.error('Please login to continue');
-        navigate('/login', { 
-          state: { 
-            returnUrl: `/products/${product._id}`,
-            message: 'Please login to make a purchase' 
-          }
-        });
-      } else {
-        toast.error(
-          error.response?.data?.message || 
-          'Failed to process order. Please try again.'
-        );
-      }
+      console.error('Error details:', error.response?.data || error);
+      toast.error(
+        error.response?.data?.message || 
+        'Failed to process order. Please try again.'
+      );
     } finally {
       setBuyLoading(false);
     }

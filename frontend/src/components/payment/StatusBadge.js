@@ -26,18 +26,29 @@ const statusConfig = {
     icon: AlertCircle,
     class: 'bg-red-100 text-red-800 border-red-200',
     iconClass: 'text-red-500'
+  },
+  processing: {
+    icon: Clock,
+    class: 'bg-blue-100 text-blue-800 border-blue-200',
+    iconClass: 'text-blue-500'
   }
 };
 
-const StatusBadge = ({ status }) => {
-  const config = statusConfig[status.toLowerCase()] || statusConfig.pending;
+const StatusBadge = ({ status = 'pending' }) => {
+  // Ensure status is a string and handle undefined/null
+  const normalizedStatus = (status || 'pending').toLowerCase();
+  const config = statusConfig[normalizedStatus] || statusConfig.pending;
   const Icon = config.icon;
+
+  const displayStatus = status 
+    ? status.charAt(0).toUpperCase() + status.slice(1).toLowerCase()
+    : 'Pending';
 
   return (
     <div className={`inline-flex items-center px-3 py-1 rounded-full border ${config.class}`}>
       <Icon className={`w-4 h-4 mr-2 ${config.iconClass}`} />
       <span className="text-sm font-medium">
-        {status.charAt(0).toUpperCase() + status.slice(1)}
+        {displayStatus}
       </span>
     </div>
   );

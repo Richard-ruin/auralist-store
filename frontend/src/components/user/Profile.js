@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import AddressSection from './AddressSection';
 import { 
   User, 
   Mail, 
@@ -114,7 +115,8 @@ const Profile = () => {
     { id: 'profile', name: 'Profile', icon: User },
     { id: 'orders', name: 'Orders', icon: Package },
     { id: 'wishlist', name: 'Wishlist', icon: Heart },
-    { id: 'security', name: 'Security', icon: Lock }
+    { id: 'security', name: 'Security', icon: Lock },
+    { id: 'address', name: 'Addresses', icon: MapPin }
   ];
 
   if (!user) {
@@ -327,6 +329,11 @@ const Profile = () => {
                   </form>
                 </div>
               )}
+              {activeTab === 'address' && (
+  <div>
+    <AddressSection />
+  </div>
+)}
 
               {activeTab === 'orders' && (
                 <div>
