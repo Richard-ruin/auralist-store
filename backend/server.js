@@ -14,6 +14,7 @@ const userRoutes = require('./routes/users');
 const orderRoutes = require('./routes/orders');
 const paymentRoutes = require('./routes/payment');
 const addressRoutes = require('./routes/address');
+const wishlistRoutes = require('./routes/wishlist');
 
 const corsOptions = {
   origin: process.env.CLIENT_URL || 'http://localhost:3000',
@@ -51,6 +52,7 @@ app.use('/api/users', userRoutes);
 app.use('/api/orders', orderRoutes);
 app.use('/api/payments', paymentRoutes);
 app.use('/api/addresses', addressRoutes);
+app.use('/api/wishlist', wishlistRoutes);
 
 //image
 app.use('/api/images', express.static('public/images'));
@@ -74,6 +76,15 @@ app.use((req, res, next) => {
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => {
   console.log(`Server is running on port ${PORT}`);
+});
+app.use((err, req, res, next) => {
+  console.error('Error:', err);
+  
+  res.status(err.statusCode || 500).json({
+    status: 'error',
+    message: err.message || 'Internal server error',
+    error: process.env.NODE_ENV === 'development' ? err : {}
+  });
 });
 
 app._router.stack.forEach(function(r){
