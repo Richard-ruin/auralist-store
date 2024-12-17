@@ -1,62 +1,93 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Search,
-  Filter,
   Download,
   Eye,
-  MoreVertical,
   Calendar,
   Package,
-  Clock
+  Clock,
+  MoreVertical
 } from 'lucide-react';
+import orderService from '../../services/orderService';
+import OrderConfirmationModal from './OrderConfirmationModal';
+import OrderFilter from './OrderFilter';
+import Pagination from './Pagination';
+import { filterOrders, sortOrders } from '../../utils/orderHelpers';
+import { toast } from 'react-hot-toast';
 
 const OrderManager = () => {
-  const [orders] = useState([
-    {
-      id: '#ORD-0001',
-      customer: {
-        name: 'John Doe',
-        email: 'john@example.com'
-      },
-      date: '2024-03-20',
-      amount: 499.99,
-      status: 'Completed',
-      payment: 'Paid',
-      items: [
-        { name: 'HD 660S', quantity: 1 }
-      ]
-    },
-    {
-      id: '#ORD-0002',
-      customer: {
-        name: 'Jane Smith',
-        email: 'jane@example.com'
-      },
-      date: '2024-03-19',
-      amount: 1499.99,
-      status: 'Processing',
-      payment: 'Paid',
-      items: [
-        { name: 'KEF LS50 Meta', quantity: 1 }
-      ]
-    },
-    {
-      id: '#ORD-0003',
-      customer: {
-        name: 'Robert Johnson',
-        email: 'robert@example.com'
-      },
-      date: '2024-03-18',
-      amount: 1299.99,
-      status: 'Pending',
-      payment: 'Unpaid',
-      items: [
-        { name: 'Cambridge CXA81', quantity: 1 }
-      ]
+  // States
+  const [orders, setOrders] = useState([]);
+  const [filteredOrders, setFilteredOrders] = useState([]);
+  const [stats, setStats] = useState({
+    total: 0,
+    thisMonth: 0,
+    pending: 0,
+    processing: 0
+  });
+  const [filters, setFilters] = useState({
+    status: 'all',
+    paymentStatus: 'all',
+    search: '',
+    sortBy: 'date-desc'
+  });
+  const [pagination, setPagination] = useState({
+    currentPage: 1,
+    itemsPerPage: 10,
+    totalPages: 1
+  });
+  const [loading, setLoading] = useState(true);
+  const [selectedOrder, setSelectedOrder] = useState(null);
+  const [isModalOpen, setIsModalOpen] = useState(false);
+
+  // Fetch initial data
+  useEffect(() => {
+    fetchData();
+  }, []);
+
+  // Apply filters when orders or filters change
+  useEffect(() => {
+    let result = filterOrders(orders, filters);
+    result = sortOrders(result, filters.sortBy);
+    setFilteredOrders(result);
+    setPagination(prev => ({
+      ...prev,
+      totalPages: Math.ceil(result.length / prev.itemsPerPage)
+    }));
+  }, [orders, filters]);
+
+  const fetchData = async () => {
+    try {
+      setLoading(true);
+      const [ordersResponse, statsResponse] = await Promise.all([
+        orderService.getAllOrders(),
+        orderService.getOrderStats()
+      ]);
+      
+      // Set orders dengan null check
+      setOrders(ordersResponse?.data?.orders || []);
+      
+      // Set stats dengan struktur yang benar
+      const statsData = statsResponse?.data?.data || statsResponse?.data || {
+        total: 0,
+        thisMonth: 0,
+        pending: 0,
+        processing: 0
+      };
+      
+      setStats(statsData);
+      
+    } catch (error) {
+      console.error('Error fetching orders:', error);
+      toast.error('Failed to fetch orders');
+    } finally {
+      setLoading(false);
     }
-  ]);
+  };
 
   const getStatusColor = (status) => {
+    if (!status) return 'bg-gray-100 text-gray-800';
+    
     switch (status.toLowerCase()) {
       case 'completed':
         return 'bg-green-100 text-green-800';
@@ -72,18 +103,95 @@ const OrderManager = () => {
   };
 
   const getPaymentStatusColor = (status) => {
+    if (!status) return 'bg-gray-100 text-gray-800';
+    
     switch (status.toLowerCase()) {
-      case 'paid':
+      case 'completed':
         return 'bg-green-100 text-green-800';
-      case 'unpaid':
+      case 'pending':
+        return 'bg-yellow-100 text-yellow-800';
+      case 'failed':
         return 'bg-red-100 text-red-800';
       default:
         return 'bg-gray-100 text-gray-800';
     }
   };
 
+  
+
+  const handleFilterChange = (key, value) => {
+    setFilters(prev => ({ ...prev, [key]: value }));
+    setPagination(prev => ({ ...prev, currentPage: 1 }));
+  };
+
+  const resetFilters = () => {
+    setFilters({
+      status: 'all',
+      paymentStatus: 'all',
+      search: '',
+      sortBy: 'date-desc'
+    });
+  };
+
+  const handleConfirmPayment = async (status, notes) => {
+    if (!selectedOrder) {
+      toast.error('No order selected');
+      return;
+    }
+  
+    try {
+      await orderService.confirmPayment(selectedOrder._id, {
+        status,
+        notes
+      });
+      await fetchData(); // Refresh data
+      setIsModalOpen(false);
+      toast.success(`Payment ${status === 'confirmed' ? 'confirmed' : 'rejected'} successfully`);
+    } catch (error) {
+      console.error('Error confirming payment:', error);
+      toast.error(error.response?.data?.message || 'Failed to confirm payment');
+    }
+  };
+
+  const handleExport = () => {
+    const csv = filteredOrders.map(order => ({
+      'Order ID': order._id,
+      'Customer': order.user.name,
+      'Email': order.user.email,
+      'Date': new Date(order.createdAt).toLocaleDateString(),
+      'Amount': order.totalAmount,
+      'Status': order.status,
+      'Payment Status': order.paymentStatus
+    }));
+
+    const csvContent = "data:text/csv;charset=utf-8," + 
+      Object.keys(csv[0]).join(",") + "\n" +
+      csv.map(row => Object.values(row).join(",")).join("\n");
+    
+    const link = document.createElement("a");
+    link.href = encodeURI(csvContent);
+    link.download = "orders.csv";
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
+  const getCurrentPageOrders = () => {
+    const start = (pagination.currentPage - 1) * pagination.itemsPerPage;
+    const end = start + pagination.itemsPerPage;
+    return filteredOrders.slice(start, end);
+  };
+
+  if (loading) {
+    return (
+      <div className="flex justify-center items-center min-h-screen">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600" />
+      </div>
+    );
+  }
+
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 p-6">
       {/* Header */}
       <div className="flex justify-between items-center">
         <div>
@@ -103,7 +211,9 @@ const OrderManager = () => {
             </div>
             <div className="ml-4">
               <p className="text-sm font-medium text-gray-500">Total Orders</p>
-              <p className="mt-1 text-2xl font-semibold text-gray-900">128</p>
+              <p className="mt-1 text-2xl font-semibold text-gray-900">
+                {stats?.total || 0}
+              </p>
             </div>
           </div>
         </div>
@@ -115,7 +225,9 @@ const OrderManager = () => {
             </div>
             <div className="ml-4">
               <p className="text-sm font-medium text-gray-500">This Month</p>
-              <p className="mt-1 text-2xl font-semibold text-gray-900">45</p>
+              <p className="mt-1 text-2xl font-semibold text-gray-900">
+                {stats?.thisMonth || 0}
+              </p>
             </div>
           </div>
         </div>
@@ -127,7 +239,9 @@ const OrderManager = () => {
             </div>
             <div className="ml-4">
               <p className="text-sm font-medium text-gray-500">Pending</p>
-              <p className="mt-1 text-2xl font-semibold text-gray-900">12</p>
+              <p className="mt-1 text-2xl font-semibold text-gray-900">
+                {stats?.pending || 0}
+              </p>
             </div>
           </div>
         </div>
@@ -139,7 +253,9 @@ const OrderManager = () => {
             </div>
             <div className="ml-4">
               <p className="text-sm font-medium text-gray-500">Processing</p>
-              <p className="mt-1 text-2xl font-semibold text-gray-900">8</p>
+              <p className="mt-1 text-2xl font-semibold text-gray-900">
+                {stats?.processing || 0}
+              </p>
             </div>
           </div>
         </div>
@@ -153,137 +269,133 @@ const OrderManager = () => {
             <input
               type="text"
               placeholder="Search orders..."
+              value={filters.search}
+              onChange={(e) => handleFilterChange('search', e.target.value)}
               className="pl-10 pr-4 py-2 border border-gray-300 rounded-md w-full"
             />
           </div>
-          <button className="flex items-center px-4 py-2 border border-gray-300 rounded-md hover:bg-gray-50">
-            <Filter className="w-5 h-5 mr-2" />
-            Filters
-          </button>
         </div>
         <div className="flex items-center gap-4 w-full sm:w-auto">
-          <button className="flex items-center px-4 py-2 border border-gray-300 rounded-md hover:bg-gray-50">
+          <button
+            onClick={handleExport}
+            className="flex items-center px-4 py-2 border border-gray-300 rounded-md hover:bg-gray-50"
+          >
             <Download className="w-5 h-5 mr-2" />
             Export
           </button>
         </div>
       </div>
 
-      {/* Orders Table */}
-      <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
-        <table className="min-w-full divide-y divide-gray-200">
-          <thead className="bg-gray-50">
-            <tr>
-              <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Order ID
-              </th>
-              <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Customer
-              </th>
-              <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Date
-              </th>
-              <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Amount
-              </th>
-              <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Status
-              </th>
-              <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Payment
-              </th>
-              <th scope="col" className="relative px-6 py-3">
-                <span className="sr-only">Actions</span>
-              </th>
-            </tr>
-          </thead>
-          <tbody className="bg-white divide-y divide-gray-200">
-            {orders.map((order) => (
-              <tr key={order.id} className="hover:bg-gray-50">
-                <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                  {order.id}
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap">
-                  <div className="flex flex-col">
-                    <div className="text-sm font-medium text-gray-900">
-                      {order.customer.name}
-                    </div>
-                    <div className="text-sm text-gray-500">
-                      {order.customer.email}
-                    </div>
-                  </div>
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                  {order.date}
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                  ${order.amount.toFixed(2)}
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap">
-                  <span className={`px-2 py-1 text-xs font-semibold rounded-full ${getStatusColor(order.status)}`}>
-                    {order.status}
-                  </span>
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap">
-                  <span className={`px-2 py-1 text-xs font-semibold rounded-full ${getPaymentStatusColor(order.payment)}`}>
-                    {order.payment}
-                  </span>
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                  <div className="flex items-center justify-end gap-2">
-                    <button className="text-indigo-600 hover:text-indigo-900">
-                      <Eye className="w-5 h-5" />
-                    </button>
-                    <button className="text-gray-400 hover:text-gray-500">
-                      <MoreVertical className="w-5 h-5" />
-                    </button>
-                  </div>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+      {/* Filters */}
+      <OrderFilter
+        filters={filters}
+        onFilterChange={handleFilterChange}
+        onReset={resetFilters}
+      />
 
-        {/* Pagination */}
-        <div className="bg-white px-4 py-3 flex items-center justify-between border-t border-gray-200 sm:px-6">
-          <div className="flex-1 flex justify-between sm:hidden">
-            <button className="relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50">
-              Previous
-            </button>
-            <button className="ml-3 relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50">
-              Next
-            </button>
-          </div>
-          <div className="hidden sm:flex-1 sm:flex sm:items-center sm:justify-between">
-            <div>
-              <p className="text-sm text-gray-700">
-                Showing <span className="font-medium">1</span> to{' '}
-                <span className="font-medium">10</span> of{' '}
-                <span className="font-medium">20</span> results
-              </p>
+      {/* Orders Table */}
+<div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
+  <table className="min-w-full divide-y divide-gray-200">
+    <thead className="bg-gray-50">
+      <tr>
+        <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+          Order ID
+        </th>
+        <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+          Customer
+        </th>
+        <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+          Date
+        </th>
+        <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+          Amount
+        </th>
+        <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+          Payment Method
+        </th>
+        <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+          Status
+        </th>
+        <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+          Payment Status
+        </th>
+        <th scope="col" className="relative px-6 py-3">
+          <span className="sr-only">Actions</span>
+        </th>
+      </tr>
+    </thead>
+    <tbody className="bg-white divide-y divide-gray-200">
+      {getCurrentPageOrders().map((order) => (
+        <tr key={order._id} className="hover:bg-gray-50">
+          <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+            {order._id}
+          </td>
+          <td className="px-6 py-4 whitespace-nowrap">
+            <div className="flex flex-col">
+              <div className="text-sm font-medium text-gray-900">
+                {order.user?.name || 'N/A'}
+              </div>
+              <div className="text-sm text-gray-500">
+                {order.user?.email || 'N/A'}
+              </div>
             </div>
-            <div>
-              <nav className="relative z-0 inline-flex rounded-md shadow-sm -space-x-px">
-                <button className="relative inline-flex items-center px-2 py-2 rounded-l-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50">
-                  Previous
-                </button>
-                <button className="relative inline-flex items-center px-4 py-2 border border-gray-300 bg-white text-sm font-medium text-gray-700 hover:bg-gray-50">
-                  1
-                </button>
-                <button className="relative inline-flex items-center px-4 py-2 border border-gray-300 bg-white text-sm font-medium text-gray-700 hover:bg-gray-50">
-                  2
-                </button>
-                <button className="relative inline-flex items-center px-4 py-2 border border-gray-300 bg-white text-sm font-medium text-gray-700 hover:bg-gray-50">
-                  3
-                </button>
-                <button className="relative inline-flex items-center px-2 py-2 rounded-r-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50">
-                  Next
-                </button>
-              </nav>
+          </td>
+          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+            {new Date(order.createdAt).toLocaleDateString()}
+          </td>
+          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+            ${order.totalAmount?.toFixed(2) || '0.00'}
+          </td>
+          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+            <span className="capitalize">{order.paymentMethod || 'Not specified'}</span>
+          </td>
+          <td className="px-6 py-4 whitespace-nowrap">
+            <span className={`px-2 py-1 text-xs font-semibold rounded-full ${getStatusColor(order.status)}`}>
+              {order.status || 'Unknown'}
+            </span>
+          </td>
+          <td className="px-6 py-4 whitespace-nowrap">
+            <span className={`px-2 py-1 text-xs font-semibold rounded-full ${getPaymentStatusColor(order.paymentStatus || order.paymentMethod)}`}>
+              {order.paymentStatus || order.paymentMethod || 'Unknown'}
+            </span>
+          </td>
+          <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+            <div className="flex items-center justify-end gap-2">
+              <button 
+                onClick={() => {
+                  setSelectedOrder(order);
+                  setIsModalOpen(true);
+                }}
+                className="text-indigo-600 hover:text-indigo-900"
+              >
+                <Eye className="w-5 h-5" />
+              </button>
+              <button className="text-gray-400 hover:text-gray-500">
+                <MoreVertical className="w-5 h-5" />
+              </button>
             </div>
-          </div>
-        </div>
-      </div>
+          </td>
+        </tr>
+      ))}
+    </tbody>
+  </table>
+  
+  <Pagination
+    currentPage={pagination.currentPage}
+    totalPages={pagination.totalPages}
+    onPageChange={(page) => setPagination(prev => ({ ...prev, currentPage: page }))}
+  />
+</div>
+
+      <OrderConfirmationModal
+        isOpen={isModalOpen}
+        onClose={() => {
+          setIsModalOpen(false);
+          setSelectedOrder(null);
+        }}
+        onConfirm={handleConfirmPayment}
+        order={selectedOrder}
+      />
     </div>
   );
 };

@@ -1,32 +1,32 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { Image as ImageIcon } from 'lucide-react';
+import { Image as ImageIcon, ExternalLink } from 'lucide-react';
 import axios from 'axios';
 
 const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000/api';
 
-const CategoryPage = () => {
-  const [categories, setCategories] = useState([]);
+const BrandPage = () => {
+  const [brands, setBrands] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
   useEffect(() => {
-    const fetchCategories = async () => {
+    const fetchBrands = async () => {
       try {
-        console.log('Fetching from:', `${API_URL}/categories`); // Debug log
-        const response = await axios.get(`${API_URL}/categories`, {
+        console.log('Fetching from:', `${API_URL}/brands`);
+        const response = await axios.get(`${API_URL}/brands`, {
           headers: {
             'Accept': 'application/json',
             'Content-Type': 'application/json'
           }
         });
 
-        console.log('API Response:', response.data); // Debug log
+        console.log('API Response:', response.data);
         
         if (response.data && response.data.data) {
-          setCategories(response.data.data);
+          setBrands(response.data.data);
         } else if (Array.isArray(response.data)) {
-          setCategories(response.data);
+          setBrands(response.data);
         } else {
           console.error('Unexpected data format:', response.data);
           throw new Error('Invalid data format received from server');
@@ -34,15 +34,10 @@ const CategoryPage = () => {
       } catch (err) {
         console.error('Error details:', err);
         if (err.response) {
-          // The request was made and the server responded with a status code
-          // that falls out of the range of 2xx
-          console.error('Error response:', err.response.data);
           setError(err.response.data.message || 'Server error occurred');
         } else if (err.request) {
-          // The request was made but no response was received
           setError('No response received from server. Please check your connection.');
         } else {
-          // Something happened in setting up the request that triggered an Error
           setError(err.message || 'An unexpected error occurred');
         }
       } finally {
@@ -50,7 +45,7 @@ const CategoryPage = () => {
       }
     };
 
-    fetchCategories();
+    fetchBrands();
   }, []);
 
   if (loading) {
@@ -83,41 +78,41 @@ const CategoryPage = () => {
       {/* Hero Section */}
       <div className="bg-black text-white py-20 px-4">
         <div className="max-w-7xl mx-auto text-center">
-          <h1 className="text-4xl md:text-5xl font-bold mb-4">Product Categories</h1>
+          <h1 className="text-4xl md:text-5xl font-bold mb-4">Our Brands</h1>
           <p className="text-gray-300 max-w-2xl mx-auto text-lg">
-            Discover our curated selection of products across various categories
+            Discover our curated selection of premium brands and manufacturers
           </p>
         </div>
       </div>
 
-      {/* Categories Grid */}
+      {/* Brands Grid */}
       <div className="max-w-7xl mx-auto px-4 py-16">
-        {categories.length > 0 ? (
+        {brands.length > 0 ? (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-            {categories.map((category) => (
+            {brands.map((brand) => (
               <Link
-                key={category._id}
-                to={`/shop?category=${category.slug}`}
+                key={brand._id}
+                to={`/shop?brand=${brand.slug}`}
                 className="group block"
               >
                 <div className="bg-white border border-gray-200 rounded-lg overflow-hidden transition-all duration-300 hover:shadow-xl">
                   <div className="relative aspect-w-16 aspect-h-9">
-                    {category.image ? (
+                    {brand.logo ? (
                       <img
-                        src={`${API_URL}/images/categories/${category.image}`}
-                        alt={category.name}
-                        className="w-full h-64 object-cover group-hover:opacity-90 transition-opacity duration-300"
+                        src={`${API_URL}/images/brands/${brand.logo}`}
+                        alt={brand.name}
+                        className="w-full h-48 object-contain p-4 group-hover:opacity-90 transition-opacity duration-300"
                         onError={(e) => {
                           e.target.onerror = null;
                           e.target.src = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjQiIGhlaWdodD0iMjQiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyIgZmlsbC1ydWxlPSJldmVub2RkIiBjbGlwLXJ1bGU9ImV2ZW5vZGQiPjxwYXRoIGQ9Ik0yNCAyNEgwVjBoMjR2MjR6TTEyIDIxYy01LjUyMyAwLTEwLTQuNDc3LTEwLTEwUzYuNDc3IDEgMTIgMXMxMCA0LjQ3NyAxMCAxMC00LjQ3NyAxMC0xMCAxMHptMC0xOGMtNC40MTEgMC04IDMuNTg5LTggOHMzLjU4OSA4IDggOCA4LTMuNTg5IDgtOC0zLjU4OS04LTgtOHoiLz48L3N2Zz4=';
                         }}
                       />
                     ) : (
-                      <div className="flex items-center justify-center h-64 bg-gray-100">
+                      <div className="flex items-center justify-center h-48 bg-gray-100">
                         <ImageIcon className="w-16 h-16 text-gray-400" />
                       </div>
                     )}
-                    {category.status === 'Inactive' && (
+                    {brand.status === 'Inactive' && (
                       <div className="absolute top-4 right-4">
                         <span className="px-3 py-1 text-xs font-semibold text-white bg-black rounded-full">
                           Inactive
@@ -127,21 +122,35 @@ const CategoryPage = () => {
                   </div>
                   <div className="p-6">
                     <h3 className="text-xl font-semibold text-gray-900 mb-2">
-                      {category.name}
+                      {brand.name}
                     </h3>
                     <p className="text-gray-600 text-sm mb-4 line-clamp-2">
-                      {category.description}
+                      {brand.description}
                     </p>
                     <div className="flex justify-between items-center">
                       <span className="text-sm text-gray-500">
-                        {category.productCount || 0} Products
+                        {brand.productCount || 0} Products
                       </span>
-                      <span className="inline-flex items-center text-sm font-medium text-black group-hover:underline">
-                        Explore
-                        <svg className="w-4 h-4 ml-1 group-hover:translate-x-1 transition-transform" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                          <path d="M5 12h14M12 5l7 7-7 7"/>
-                        </svg>
-                      </span>
+                      <div className="flex items-center space-x-4">
+                        {brand.website && (
+                          <a
+                            href={brand.website}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-sm text-gray-600 hover:text-black flex items-center"
+                            onClick={(e) => e.stopPropagation()}
+                          >
+                            <ExternalLink className="w-4 h-4 mr-1" />
+                            Website
+                          </a>
+                        )}
+                        <span className="inline-flex items-center text-sm font-medium text-black group-hover:underline">
+                          View Products
+                          <svg className="w-4 h-4 ml-1 group-hover:translate-x-1 transition-transform" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                            <path d="M5 12h14M12 5l7 7-7 7"/>
+                          </svg>
+                        </span>
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -152,10 +161,10 @@ const CategoryPage = () => {
           <div className="text-center py-16">
             <ImageIcon className="mx-auto h-16 w-16 text-gray-400" />
             <h3 className="mt-4 text-lg font-medium text-gray-900">
-              No categories available
+              No brands available
             </h3>
             <p className="mt-2 text-gray-500">
-              Please check back later for our product categories.
+              Please check back later for our brand collection.
             </p>
           </div>
         )}
@@ -164,4 +173,4 @@ const CategoryPage = () => {
   );
 };
 
-export default CategoryPage;
+export default BrandPage;

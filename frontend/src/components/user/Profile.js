@@ -43,6 +43,132 @@ const Profile = () => {
     }
   }, []);
 
+  const ProductImage = ({ image, name }) => {
+    return (
+      <img
+        src={image ? `${process.env.REACT_APP_API_URL}/images/products/${image}` : '/api/placeholder/300/300'}
+        alt={name}
+        className="w-full h-full object-cover rounded-md"
+        onError={(e) => {
+          e.target.onerror = null;
+          e.target.src = '/api/placeholder/300/300';
+        }}
+      />
+    );
+  };
+  
+  const ProfileOrders = () => {
+    const [orders, setOrders] = useState([]);
+    const [loading, setLoading] = useState(true);
+  
+    const fetchOrders = async () => {
+      try {
+        const token = localStorage.getItem('token');
+        if (!token) return;
+  
+        const response = await fetch('http://localhost:5000/api/orders/my-orders', {
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json',
+          }
+        });
+  
+        if (response.ok) {
+          const data = await response.json();
+          setOrders(data.data.orders || []);
+        }
+      } catch (error) {
+        console.error('Error fetching orders:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+  
+    useEffect(() => {
+      fetchOrders();
+    }, []);
+  
+    if (loading) {
+      return (
+        <div className="flex justify-center py-8">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600" />
+        </div>
+      );
+    }
+  
+    if (orders.length === 0) {
+      return (
+        <div className="text-center py-8">
+          <Package className="mx-auto h-12 w-12 text-gray-400" />
+          <h3 className="mt-2 text-sm font-medium text-gray-900">No orders yet</h3>
+          <p className="mt-1 text-sm text-gray-500">Start shopping to see your orders here.</p>
+        </div>
+      );
+    }
+  
+    return (
+      <div className="space-y-4">
+        {orders.map((order) => (  // Changed from order.items to orders.map
+          <div key={order._id} className="bg-white border rounded-lg overflow-hidden">
+            <div className="px-4 py-3 border-b">
+              <div className="flex justify-between items-center">
+                <div>
+                  <p className="text-sm font-medium text-gray-900">Order #{order._id}</p>
+                  <p className="text-sm text-gray-500">
+                    {new Date(order.createdAt).toLocaleDateString()}
+                  </p>
+                </div>
+                <span className={`px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                  order.status === 'completed' ? 'bg-green-100 text-green-800' :
+                  order.status === 'processing' ? 'bg-blue-100 text-blue-800' :
+                  order.status === 'cancelled' ? 'bg-red-100 text-red-800' :
+                  'bg-gray-100 text-gray-800'
+                }`}>
+                  {order.status}
+                </span>
+              </div>
+            </div>
+            
+            <div className="p-4">
+              <div className="space-y-4">
+                {order.items.map((item, index) => (
+                  <div key={index} className="flex items-center space-x-4">
+                    <div className="flex-shrink-0 w-16 h-16">
+                      <ProductImage 
+                        image={item.product?.mainImage} 
+                        name={item.product?.name} 
+                      />
+                    </div>
+                    <div className="flex-1">
+                      <p className="text-sm font-medium text-gray-900">
+                        {item.product?.name}
+                      </p>
+                      <p className="text-sm text-gray-500">
+                        Quantity: {item.quantity}
+                      </p>
+                    </div>
+                    <p className="text-sm font-medium text-gray-900">
+                      ${item.price?.toFixed(2)}
+                    </p>
+                  </div>
+                ))}
+              </div>
+              
+              <div className="mt-4 pt-4 border-t">
+                <div className="flex justify-between">
+                  <p className="text-sm font-medium text-gray-900">Total</p>
+                  <p className="text-sm font-medium text-gray-900">
+                    ${order.totalAmount?.toFixed(2)}
+                  </p>
+                </div>
+              </div>
+            </div>
+          </div>
+        ))}
+      </div>
+    );
+  };
+
   const handleInputChange = (e) => {
     setFormData({
       ...formData,
@@ -335,13 +461,12 @@ const Profile = () => {
   </div>
 )}
 
-              {activeTab === 'orders' && (
-                <div>
-                  <h3 className="text-lg font-medium text-gray-900 mb-6">Order History</h3>
-                  {/* Order history component will go here */}
-                  <p className="text-gray-500">No orders found.</p>
-                </div>
-              )}
+{activeTab === 'orders' && (
+    <div>
+      <h3 className="text-lg font-medium text-gray-900 mb-6">Order History</h3>
+      <ProfileOrders />
+    </div>
+  )}
 
               {activeTab === 'wishlist' && (
                 <div>

@@ -1,3 +1,4 @@
+// src/routes/userRoutes.js
 import React from 'react';
 import { Route, Routes } from 'react-router-dom';
 import ProtectedRoute from '../components/auth/ProtectedRoute';
@@ -5,6 +6,7 @@ import Profile from '../components/user/Profile';
 import Orders from '../components/user/Orders';
 import Wishlist from '../components/user/Wishlist';
 import AddressBook from '../components/user/AddressBook';
+import Cart from '../components/cart/Cart';
 import Payment from '../pages/Payment';
 
 const UserRoutes = () => {
@@ -55,6 +57,15 @@ const UserRoutes = () => {
         element={
           <ProtectedRoute>
             <Payment />
+          </ProtectedRoute>
+        } 
+      />
+      {/* Add Cart Route */}
+      <Route 
+        path="/cart" 
+        element={
+          <ProtectedRoute>
+            <Cart />
           </ProtectedRoute>
         } 
       />

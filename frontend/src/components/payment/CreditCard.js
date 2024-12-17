@@ -189,7 +189,7 @@ const CreditCard = ({ order, onSuccess }) => {
           loading ? 'opacity-50 cursor-not-allowed' : ''
         }`}
       >
-        {loading ? 'Processing...' : `Pay ${order.totalAmount.toLocaleString('id-ID', { style: 'currency', currency: 'IDR' })}`}
+        {loading ? 'Processing...' : `Pay ${order.totalAmount.toLocaleString('id-ID', { style: 'currency', currency: 'USD' })}`}
       </button>
     </form>
   );

@@ -4,6 +4,58 @@ const Order = require('../models/Order');
 const catchAsync = require('../utils/catchAsync');
 const AppError = require('../utils/appError');
 
+exports.createPayment = catchAsync(async (req, res) => {
+  console.log('Payment creation request:', {
+    body: req.body,
+    file: req.file
+  });
+
+  const { orderId, paymentMethod } = req.body;
+
+  // Validasi input dasar
+  if (!orderId || !paymentMethod) {
+    throw new AppError('Order ID and payment method are required', 400);
+  }
+
+  if (!req.file) {
+    throw new AppError('Payment proof image is required', 400);
+  }
+
+  // Cari order
+  const order = await Order.findById(orderId);
+  if (!order) {
+    throw new AppError('Order not found', 404);
+  }
+
+  // Verifikasi order milik user yang sedang login
+  if (order.user.toString() !== req.user._id.toString()) {
+    throw new AppError('You are not authorized to submit payment for this order', 403);
+  }
+
+  // Create payment record
+  const payment = await Payment.create({
+    order: orderId,
+    paymentMethod,
+    amount: order.totalAmount,
+    currency: order.currency,
+    proofImage: req.file.filename,
+    expiredAt: new Date(Date.now() + 5 * 60 * 1000)
+  });
+
+  // Update order
+  order.paymentStatus = 'pending';
+  order.paymentProof = req.file.filename;
+  order.paymentExpiredAt = payment.expiredAt;
+  await order.save();
+
+  res.status(201).json({
+    status: 'success',
+    data: {
+      payment,
+      order
+    }
+  });
+});
 exports.getBankAccounts = (req, res) => {
   const accounts = {
     visa: {
@@ -34,36 +86,7 @@ exports.getBankAccounts = (req, res) => {
   });
 };
 
-exports.createPayment = catchAsync(async (req, res) => {
-  const { orderId, paymentMethod } = req.body;
-  const proofImage = req.file.filename;
 
-  const order = await Order.findById(orderId);
-  if (!order) {
-    throw new AppError('Order not found', 404);
-  }
-
-  const payment = await Payment.create({
-    order: orderId,
-    paymentMethod,
-    amount: order.totalAmount,
-    currency: ['visa', 'mastercard'].includes(paymentMethod) ? 'USD' : 'IDR',
-    proofImage
-  });
-
-  // Update order payment details
-  order.paymentStatus = 'pending';
-  order.paymentProof = proofImage;
-  order.paymentExpiredAt = payment.expiredAt;
-  await order.save();
-
-  res.status(201).json({
-    status: 'success',
-    data: {
-      payment
-    }
-  });
-});
 
 exports.confirmPayment = catchAsync(async (req, res) => {
   const { paymentId } = req.params;

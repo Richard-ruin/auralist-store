@@ -1,28 +1,75 @@
-// components/product/ProductCard.js
+// src/components/product/ProductCard.js
 import React from 'react';
 import { Heart, ShoppingCart, ImageIcon } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'react-hot-toast';
+import { useCart } from '../../hooks/useCart';
+import { useWishlist } from '../../hooks/useWishlist';
+import { Button } from '../ui/button';
 
 const ProductCard = ({ product }) => {
   const navigate = useNavigate();
+  const { addToCart } = useCart();
+  const { wishlistItems = [], addToWishlist, removeFromWishlist } = useWishlist();
+
+  // Pastikan wishlistItems adalah array sebelum menggunakan some
+  const isProductInWishlist = Array.isArray(wishlistItems) ? 
+    wishlistItems.some(item => (item.id === product._id || item._id === product._id)) : false;
 
   const handleCardClick = () => {
     navigate(`/product/${product._id}`);
   };
 
-  const handleAddToCart = (e) => {
+  const handleWishlistClick = async (e) => {
     e.stopPropagation();
-    // Add to cart logic here
-    toast.success('Added to cart');
+    e.preventDefault();
+    
+    try {
+      if (isProductInWishlist) {
+        await removeFromWishlist(product._id);
+        toast.success('Removed from wishlist');
+      } else {
+        await addToWishlist(product._id);
+        toast.success('Added to wishlist');
+      }
+    } catch (error) {
+      if (error.response?.status === 401) {
+        toast.error('Please login as a customer to use wishlist');
+        navigate('/login', { 
+          state: { 
+            returnUrl: `/product/${product._id}`,
+            message: 'Please login as a customer to use wishlist' 
+          }
+        });
+      } else {
+        toast.error('Failed to update wishlist');
+      }
+    }
   };
 
-  const handleAddToWishlist = (e) => {
+  const handleAddToCart = async (e) => {
     e.stopPropagation();
-    // Add to wishlist logic here
-    toast.success('Added to wishlist');
-  };
+    if (product.stock === 0) return;
 
+    try {
+      const success = await addToCart(product._id, 1);
+      if (success) {
+        toast.success('Added to cart');
+      }
+    } catch (error) {
+      if (error.response?.status === 401) {
+        toast.error('Please login as a customer to add items to cart');
+        navigate('/login', { 
+          state: { 
+            returnUrl: `/product/${product._id}`,
+            message: 'Please login as a customer to add items to cart' 
+          }
+        });
+      } else {
+        toast.error(error.response?.data?.message || 'Failed to add to cart');
+      }
+    }
+  };
   const formatPrice = (price) => {
     return new Intl.NumberFormat('en-US', {
       style: 'currency',
@@ -32,7 +79,7 @@ const ProductCard = ({ product }) => {
 
   return (
     <div 
-      className="bg-white rounded-lg shadow-sm overflow-hidden group hover:shadow-md transition-shadow duration-300"
+      className="bg-white rounded-lg shadow-sm overflow-hidden group hover:shadow-md transition-shadow duration-300 cursor-pointer"
       onClick={handleCardClick}
     >
       {/* Image Section */}
@@ -44,7 +91,7 @@ const ProductCard = ({ product }) => {
             className="object-cover w-full h-48 group-hover:scale-105 transition-transform duration-300"
             onError={(e) => {
               e.target.onerror = null;
-              e.target.src = 'https://via.placeholder.com/300x300?text=No+Image';
+              e.target.src = '/api/placeholder/300/300';
             }}
           />
         ) : (
@@ -72,12 +119,14 @@ const ProductCard = ({ product }) => {
         )}
 
         {/* Wishlist Button */}
-        <button
-          onClick={handleAddToWishlist}
-          className="absolute top-2 right-2 p-2 bg-white rounded-full shadow-md opacity-0 group-hover:opacity-100 transition-opacity duration-300 hover:bg-gray-50"
+        <Button
+          onClick={handleWishlistClick}
+          variant={isProductInWishlist ? "destructive" : "secondary"}
+          size="icon"
+          className="absolute top-2 right-2 rounded-full"
         >
-          <Heart className="w-5 h-5 text-gray-700 hover:text-red-500" />
-        </button>
+          <Heart className={`w-5 h-5 ${isProductInWishlist ? 'fill-current' : ''}`} />
+        </Button>
       </div>
 
       {/* Content Section */}
@@ -103,32 +152,29 @@ const ProductCard = ({ product }) => {
         {/* Price and Action Section */}
         <div className="flex justify-between items-center">
           <div>
-            {/* Compare Price */}
             {product.comparePrice > product.price && (
               <span className="text-sm text-gray-500 line-through mr-2">
                 {formatPrice(product.comparePrice)}
               </span>
             )}
-            {/* Current Price */}
             <span className="text-lg font-bold text-gray-900">
               {formatPrice(product.price)}
             </span>
           </div>
 
-          {/* Add to Cart Button */}
           <button
-            onClick={handleAddToCart}
-            disabled={product.stock === 0}
-            className={`p-2 rounded-full ${
-              product.stock === 0
-                ? 'bg-gray-100 cursor-not-allowed'
-                : 'bg-indigo-50 hover:bg-indigo-100'
-            } transition-colors`}
-          >
-            <ShoppingCart className={`w-5 h-5 ${
-              product.stock === 0 ? 'text-gray-400' : 'text-indigo-600'
-            }`} />
-          </button>
+      onClick={handleAddToCart}
+      disabled={product.stock === 0}
+      className={`p-2 rounded-full ${
+        product.stock === 0
+          ? 'bg-gray-100 cursor-not-allowed'
+          : 'bg-indigo-50 hover:bg-indigo-100'
+      } transition-colors`}
+    >
+      <ShoppingCart className={`w-5 h-5 ${
+        product.stock === 0 ? 'text-gray-400' : 'text-indigo-600'
+      }`} />
+    </button>
         </div>
 
         {/* Specs Preview */}

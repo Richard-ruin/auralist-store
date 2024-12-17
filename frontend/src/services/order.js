@@ -1,79 +1,48 @@
-// services/order.js
 import api from './api';
-import { handleError } from '../utils/errorHandler';
-import { validateOrderData } from '../utils/ordervalidator';
-import { toast } from 'react-hot-toast';
 
 const orderService = {
   createOrder: async (orderData) => {
     try {
-      // Validate order data
-      const validation = validateOrderData(orderData);
-      if (!validation.isValid) {
-        console.error('Validation errors:', validation.errors);
-        throw new Error(validation.errors.join(', '));
-      }
-
-      // Format data
       const formattedData = {
         items: orderData.items.map(item => ({
           product: item.product,
-          quantity: parseInt(item.quantity),
-          price: parseFloat(item.price)
+          quantity: Number(item.quantity),
+          price: Number(item.price)
         })),
-        shippingAddress: {
-          street: orderData.shippingAddress.street,
-          city: orderData.shippingAddress.city,
-          state: orderData.shippingAddress.state,
-          postalCode: orderData.shippingAddress.postalCode,
-          country: orderData.shippingAddress.country
-        },
-        totalAmount: parseFloat(orderData.totalAmount),
+        shippingAddress: orderData.shippingAddress,
+        paymentMethod: orderData.paymentMethod || 'pending',
+        totalAmount: Number(orderData.totalAmount),
+        currency: orderData.currency || 'USD',
         status: orderData.status || 'processing'
       };
 
-      console.log('Sending formatted data:', formattedData);
+      console.log('Sending formatted order data:', formattedData);
 
       const response = await api.post('/orders', formattedData);
       return response;
     } catch (error) {
-      const handledError = handleError(error);
-      toast.error(handledError.message);
-      throw handledError;
+      console.error('Order service error:', {
+        message: error.message,
+        response: error.response?.data,
+        data: error.response?.data?.data
+      });
+      throw error;
     }
   },
 
   getOrder: async (orderId) => {
-    try {
-      const response = await api.get(`/orders/${orderId}`);
-      return response;
-    } catch (error) {
-      const handledError = handleError(error);
-      toast.error(handledError.message);
-      throw handledError;
-    }
+    const response = await api.get(`/orders/${orderId}`);
+    return response;
   },
 
-  updateOrderStatus: async (orderId, status) => {
-    try {
-      const response = await api.patch(`/orders/${orderId}/status`, { status });
-      return response;
-    } catch (error) {
-      const handledError = handleError(error);
-      toast.error(handledError.message);
-      throw handledError;
-    }
+  updateOrder: async (orderId, updateData) => {
+    const response = await api.patch(`/orders/${orderId}`, updateData);
+    return response;
   },
 
   getMyOrders: async () => {
-    try {
-      const response = await api.get('/orders/my-orders');
-      return response;
-    } catch (error) {
-      const handledError = handleError(error);
-      toast.error(handledError.message);
-      throw handledError;
-    }
+    const response = await api.get('/orders/my-orders');
+    return response;
   }
 };
 

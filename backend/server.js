@@ -2,6 +2,7 @@ const express = require('express');
 const mongoose = require('mongoose');
 const cors = require('cors');
 const morgan = require('morgan');
+const path = require('path');
 require('dotenv').config();
 
 // Import routes
@@ -15,11 +16,12 @@ const orderRoutes = require('./routes/orders');
 const paymentRoutes = require('./routes/payment');
 const addressRoutes = require('./routes/address');
 const wishlistRoutes = require('./routes/wishlist');
+const cartRoutes = require('./routes/cart');
 
 const corsOptions = {
   origin: process.env.CLIENT_URL || 'http://localhost:3000',
   credentials: true,
-  optionSuccessStatus: 200
+  optionsSuccessStatus: 200
 };
 
 // Import error handler
@@ -33,29 +35,39 @@ mongoose.connect(process.env.MONGODB_URI)
   .then(() => console.log('Connected to MongoDB'))
   .catch((err) => console.error('Could not connect to MongoDB...', err));
 
-// check
-app.use(cors(corsOptions));
-
 // Middleware
-app.use(cors());
+app.use(cors(corsOptions));  // Gunakan hanya satu kali dengan options yang benar
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(morgan('dev')); // Logging
+
+// Static files middleware
+// Tambahkan logging untuk request gambar
+app.use('/api/images', (req, res, next) => {
+  console.log('Image request path:', req.path);
+  console.log('Full URL:', req.originalUrl);
+  next();
+}, express.static(path.join(__dirname, 'public/images')));
+
+// Pastikan folder ada
+const fs = require('fs');
+const paymentsDir = path.join(__dirname, 'public/images/payments');
+if (!fs.existsSync(paymentsDir)) {
+  fs.mkdirSync(paymentsDir, { recursive: true });
+}
 
 // Routes
 app.use('/api/auth', authRoutes);
 app.use('/api/categories', categoryRoutes);
 app.use('/api/brands', brandRoutes);
-app.use('/api/products', require('./routes/products'));
+app.use('/api/products', productRoutes);
 app.use('/api/specifications', specificationRoutes); 
 app.use('/api/users', userRoutes);
 app.use('/api/orders', orderRoutes);
 app.use('/api/payments', paymentRoutes);
 app.use('/api/addresses', addressRoutes);
 app.use('/api/wishlist', wishlistRoutes);
-
-//image
-app.use('/api/images', express.static('public/images'));
+app.use('/api/cart', cartRoutes);
 
 // Error handling
 app.use(errorHandler);
@@ -68,6 +80,7 @@ app.use('*', (req, res) => {
   });
 });
 
+// Request logging middleware
 app.use((req, res, next) => {
   console.log('Request path:', req.path);
   next();
@@ -77,6 +90,8 @@ const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => {
   console.log(`Server is running on port ${PORT}`);
 });
+
+// Global error handler
 app.use((err, req, res, next) => {
   console.error('Error:', err);
   
@@ -86,9 +101,3 @@ app.use((err, req, res, next) => {
     error: process.env.NODE_ENV === 'development' ? err : {}
   });
 });
-
-app._router.stack.forEach(function(r){
-  if (r.route && r.route.path){
-    console.log(r.route.path)
-  }
-})

@@ -5,10 +5,12 @@ import { useNavigate } from 'react-router-dom';
 import { toast } from 'react-hot-toast';
 import { useWishlist } from '../../hooks/useWishlist';
 import { Badge } from '../ui/badge';
+import { useCart } from '../../hooks/useCart';
 
 const WishlistItem = ({ item }) => {
   const navigate = useNavigate();
   const { removeFromWishlist } = useWishlist();
+  const { addToCart } = useCart();
 
   const getImageUrl = (image) => {
     if (!image) return '/api/placeholder/400/320';
@@ -27,9 +29,30 @@ const WishlistItem = ({ item }) => {
     await removeFromWishlist(item._id || item.id);
   };
 
-  const handleAddToCart = (e) => {
+  const handleAddToCart = async (e) => {
     e.stopPropagation();
-    toast.info('Cart functionality coming soon');
+    if (!item.inStock) return;
+
+    try {
+      const success = await addToCart(item._id || item.id, 1);
+      if (success) {
+        toast.success('Added to cart');
+        // Optionally remove from wishlist after adding to cart
+        await removeFromWishlist(item._id || item.id);
+      }
+    } catch (error) {
+      if (error.response?.status === 401) {
+        toast.error('Please login to continue');
+        navigate('/login', { 
+          state: { 
+            returnUrl: `/product/${item._id || item.id}`,
+            message: 'Please login to add items to cart' 
+          }
+        });
+      } else {
+        toast.error(error.response?.data?.message || 'Failed to add to cart');
+      }
+    }
   };
 
   return (
@@ -77,18 +100,18 @@ const WishlistItem = ({ item }) => {
 
         {/* Action Buttons */}
         <div className="mt-4 flex space-x-2">
-          <button
-            onClick={handleAddToCart}
-            disabled={!item.inStock}
-            className={`flex-1 flex items-center justify-center px-4 py-2 rounded-md text-sm font-medium 
-              ${item.inStock
-                ? 'bg-indigo-600 text-white hover:bg-indigo-700'
-                : 'bg-gray-100 text-gray-400 cursor-not-allowed'
-              }`}
-          >
-            <ShoppingCart className="w-4 h-4 mr-2" />
-            Add to Cart
-          </button>
+        <button
+      onClick={handleAddToCart}
+      disabled={!item.inStock}
+      className={`flex-1 flex items-center justify-center px-4 py-2 rounded-md text-sm font-medium 
+        ${item.inStock
+          ? 'bg-indigo-600 text-white hover:bg-indigo-700'
+          : 'bg-gray-100 text-gray-400 cursor-not-allowed'
+        }`}
+    >
+      <ShoppingCart className="w-4 h-4 mr-2" />
+      Add to Cart
+    </button>
           
           <button
             onClick={handleRemove}

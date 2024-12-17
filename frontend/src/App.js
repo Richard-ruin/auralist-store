@@ -6,6 +6,7 @@ import HomePage from './pages/Home';
 import ShopPage from './pages/Shop';
 import AboutPage from './pages/About';
 import CategoriesPage from './pages/Categories';
+import BrandsPage from './pages/Brands';
 import ContactPage from './pages/Contact';
 import NotFoundPage from './pages/NotFound';
 import ProductDetail from './components/product/ProductDetail';
@@ -33,6 +34,7 @@ import { UserProvider } from './context/UserContext';
 import { PaymentProvider } from './context/PaymentContext';
 import { OrderProvider } from './context/OrderContext';
 import { WishlistProvider } from './context/WishlistContext';
+import { CartProvider } from './context/CartContext';
 
 const App = () => {
   return (
@@ -44,6 +46,7 @@ const App = () => {
             <PaymentProvider>
               <OrderProvider>
                 <WishlistProvider>
+                  <CartProvider>
       <Routes>
         {/* Auth Routes */}
         <Route path="/login" element={
@@ -80,8 +83,10 @@ const App = () => {
           <Route path="/shop" element={<ShopPage />} />
           <Route path="/product/:id" element={<ProductDetail />} />
           <Route path="/categories" element={<CategoriesPage />} />
+          <Route path="/brands" element={<BrandsPage />} />
           <Route path="/about" element={<AboutPage />} />
           <Route path="/contact" element={<ContactPage />} />
+          
           
           {/* User Protected Routes */}
           <Route path="/user/*" element={
@@ -94,6 +99,7 @@ const App = () => {
         {/* 404 Route */}
         <Route path="*" element={<NotFoundPage />} />
       </Routes>
+      </CartProvider>
       </WishlistProvider>
       </OrderProvider>
       </PaymentProvider>

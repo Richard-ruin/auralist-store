@@ -16,7 +16,8 @@ import {
 import api from '../../services/api';
 import { toast } from 'react-hot-toast';
 import orderService from '../../services/order';
-
+import { useWishlist } from '../../hooks/useWishlist';
+import { useCart } from '../../hooks/useCart';
 
 const ProductDetail = () => {
   const { id } = useParams();
@@ -26,6 +27,9 @@ const ProductDetail = () => {
   const [quantity, setQuantity] = useState(1);
   const [selectedImage, setSelectedImage] = useState(0);
   const [buyLoading, setBuyLoading] = useState(false);
+  const { isInWishlist, toggleWishlist } = useWishlist();
+  const [isWishlisted, setIsWishlisted] = useState(false);
+  const { addToCart } = useCart();
 
   useEffect(() => {
     const fetchProduct = async () => {
@@ -51,25 +55,51 @@ const ProductDetail = () => {
     }
   };
 
+  
+
   const handleAddToCart = async () => {
     try {
-      await api.post('/cart/add', {
-        productId: product._id,
-        quantity: quantity
-      });
-      toast.success('Added to cart');
-      navigate('/cart');
+      const success = await addToCart(product._id, quantity);
+      if (success) {
+        toast.success('Added to cart');
+      }
     } catch (error) {
       if (error.response?.status === 401) {
         toast.error('Please login to continue');
         navigate('/login', { 
           state: { 
-            returnUrl: `/products/${id}`,
+            returnUrl: `/product/${id}`,
             message: 'Please login to add items to cart' 
           }
         });
       } else {
-        toast.error('Failed to add to cart');
+        toast.error(error.response?.data?.message || 'Failed to add to cart');
+      }
+    }
+  };
+  useEffect(() => {
+    if (product) {
+      setIsWishlisted(isInWishlist(product._id));
+    }
+  }, [product, isInWishlist]);
+
+  const handleWishlistClick = async (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    try {
+      await toggleWishlist(product._id);
+      setIsWishlisted(!isWishlisted);
+    } catch (error) {
+      if (error.response?.status === 401) {
+        toast.error('Please login to continue');
+        navigate('/login', { 
+          state: { 
+            returnUrl: `/product/${id}`,
+            message: 'Please login to add items to wishlist' 
+          }
+        });
+      } else {
+        toast.error('Failed to update wishlist');
       }
     }
   };
@@ -77,62 +107,60 @@ const ProductDetail = () => {
   const handleBuyNow = async () => {
     try {
       setBuyLoading(true);
+      
+      // Get default address
+      let defaultAddress;
+      try {
+        const addressResponse = await api.get('/addresses/default');
+        defaultAddress = addressResponse.data.data;
+        console.log('Got default address:', defaultAddress);
+      } catch (error) {
+        if (error.response?.status === 404) {
+          toast.error('Please set a default shipping address first');
+          navigate('/user/address-book');
+          return;
+        }
+        throw error;
+      }
   
-      // Format order data sesuai dengan model backend
+      // Prepare order data
       const orderData = {
         items: [{
-          product: product._id, // Hanya kirim ID produk
-          quantity: quantity,
-          price: product.price
+          product: product._id,
+          quantity: Number(quantity),
+          price: Number(product.price)
         }],
-        shippingAddress: {
-          street: "Will be updated",
-          city: "Will be updated",
-          state: "Will be updated",
-          postalCode: "00000",
-          country: "Will be updated"
-        },
-        totalAmount: product.price * quantity, // Hitung total amount
-        status: 'processing', // Set default status
+        shippingAddress: defaultAddress._id, // Send just the ID
+        paymentMethod: 'pending',
+        totalAmount: Number(product.price * quantity)
       };
   
       console.log('Sending order data:', orderData);
   
-      // Create order using order service
       const response = await orderService.createOrder(orderData);
-      console.log('Order creation response:', response);
+      console.log('Order created:', response.data);
   
-      // Check if order was created successfully
-      if (!response?.data?.data?._id) {
-        throw new Error('Failed to create order: Invalid response');
-      }
-  
-      const createdOrder = response.data.data;
-  
-      // Navigate to payment page with complete data
-      navigate(`/user/payment/${createdOrder._id}`, {
+      // Navigate to payment page
+      navigate(`/user/payment/${response.data.data.order._id}`, {
         state: {
           order: {
-            ...createdOrder,
-            // Add product details for display
+            ...response.data.data.order,
             items: [{
               product: {
                 _id: product._id,
                 name: product.name,
                 price: product.price,
-                image: product.mainImage || (product.images?.[0])
+                image: product.mainImage || (product.images && product.images[0])
               },
               quantity: quantity,
               price: product.price
-            }],
-            totalAmount: product.price * quantity,
-            currency: 'USD'
+            }]
           }
         }
       });
   
     } catch (error) {
-      console.error('Error details:', error.response?.data || error);
+      console.error('Error creating order:', error.response?.data || error);
       toast.error(
         error.response?.data?.message || 
         'Failed to process order. Please try again.'
@@ -372,26 +400,27 @@ const ProductDetail = () => {
             </button>
 
             <button
-              onClick={handleAddToCart}
-              disabled={product.stock === 0 || buyLoading}
-              className={`flex-1 px-6 py-3 rounded-md flex items-center justify-center
-                border border-indigo-600 
-                ${product.stock === 0 || buyLoading
-                  ? 'opacity-50 cursor-not-allowed'
-                  : 'text-indigo-600 hover:bg-indigo-50 active:bg-indigo-100'} 
-                transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500`}
-            >
-              <ShoppingBag className="w-5 h-5 mr-2" />
-              Add to Cart
-            </button>
+      onClick={handleAddToCart}
+      disabled={product.stock === 0 || loading}
+      className={`flex-1 px-6 py-3 rounded-md flex items-center justify-center
+        border border-indigo-600 
+        ${product.stock === 0 || loading
+          ? 'opacity-50 cursor-not-allowed'
+          : 'text-indigo-600 hover:bg-indigo-50 active:bg-indigo-100'} 
+        transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500`}
+    >
+      <ShoppingBag className="w-5 h-5 mr-2" />
+      Add to Cart
+    </button>
 
             <button 
-              className="px-6 py-3 rounded-md border border-gray-300 hover:bg-gray-50 active:bg-gray-100
-                transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500"
-              title="Add to Wishlist"
-            >
-              <Heart className={`w-5 h-5 ${product.inWishlist ? 'fill-current text-red-500' : 'text-gray-600'}`} />
-            </button>
+    onClick={handleWishlistClick}
+    className="px-6 py-3 rounded-md border border-gray-300 hover:bg-gray-50 active:bg-gray-100
+      transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500"
+    title="Add to Wishlist"
+  >
+    <Heart className={`w-5 h-5 ${isWishlisted ? 'fill-current text-red-500' : 'text-gray-600'}`} />
+  </button>
           </div>
         </div>
       </div>

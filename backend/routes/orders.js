@@ -1,22 +1,23 @@
-// routes/order.js
 const express = require('express');
 const router = express.Router();
 const orderController = require('../controllers/orderController');
 const { protect, restrictTo } = require('../middleware/auth');
 const { validateCreateOrder } = require('../middleware/validateOrder');
 
-// Protect all routes after this middleware
+// Protect all routes
 router.use(protect);
 
-// Customer routes
-router.post('/', validateCreateOrder, orderController.createOrder);
+// Public routes (customer)
 router.get('/my-orders', orderController.getUserOrders);
-router.get('/my-orders/:id', orderController.getOrder);
+router.post('/', validateCreateOrder, orderController.createOrder);
 
 // Admin routes
 router.use(restrictTo('admin'));
-router.get('/', orderController.getOrders);
-router.get('/:id', orderController.getOrder);
-router.patch('/:id/status', orderController.updateOrderStatus);
+
+// Stats route harus di atas route dengan parameter
+router.get('/stats', orderController.getOrderStats);
+router.get('/all', orderController.getAllOrders);
+router.get('/:orderId', orderController.getOrderDetails);
+router.patch('/:orderId/confirm-payment', orderController.confirmPayment);
 
 module.exports = router;

@@ -5,6 +5,9 @@ const { protect } = require('../middleware/auth');
 
 router.use(protect); // Protect all address routes
 
+// Add this new route for default address
+router.get('/default', addressController.getDefaultAddress);
+
 router
   .route('/')
   .get(addressController.getAllAddresses)

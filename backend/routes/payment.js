@@ -1,30 +1,25 @@
-// routes/payment.js
 const express = require('express');
 const router = express.Router();
 const paymentController = require('../controllers/paymentController');
-const uploadPayment = require('../middleware/uploadPayment');
-const { protect, restrictTo } = require('../middleware/auth');
-const { validatePayment } = require('../middleware/validateOrder');
+const { protect } = require('../middleware/auth');
+const { uploadPayment } = require('../middleware/uploadPayment');
 
-// Public routes
+router.use(protect);
+
+// Get bank account info
 router.get('/bank-accounts', paymentController.getBankAccounts);
 
-// Protected routes
-router.use(protect);
-router.get('/:id/status', paymentController.getPaymentStatus);
-router.post(
-  '/create',
-  validatePayment,
+// Handle payment creation with file upload
+router.post('/create', 
   uploadPayment.single('proofImage'),
+  (req, res, next) => {
+    console.log('Upload middleware processed:', req.file);
+    next();
+  },
   paymentController.createPayment
 );
 
-// Admin routes
-router.patch(
-  '/confirm/:paymentId',
-  protect,
-  restrictTo('admin'),
-  paymentController.confirmPayment
-);
+// Get payment status
+router.get('/:paymentId/status', paymentController.getPaymentStatus);
 
 module.exports = router;

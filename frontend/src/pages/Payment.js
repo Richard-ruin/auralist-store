@@ -107,13 +107,10 @@ const Payment = () => {
           <PaymentDetails
             orderId={orderId}
             paymentMethod={selectedMethod}
-            bankAccount={paymentMethods
-              .flatMap(category => category.methods)
-              .find(method => method.id === selectedMethod)
-            }
             amount={orderData.totalAmount}
+            currency={orderData.currency}
             onBack={() => setStep('method')}
-            onNext={() => setStep('confirmation')}
+            onNext={() => setStep('confirmation')} // Disederhanakan
           />
         );
       case 'confirmation':
@@ -136,6 +133,7 @@ const Payment = () => {
         return null;
     }
   };
+
 
   if (loading) {
     return (

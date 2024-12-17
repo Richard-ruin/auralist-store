@@ -1,50 +1,62 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
+import { ArrowRight } from 'lucide-react';
+import api from '../../services/api';
 import ProductCard from '../product/ProductCard';
 
 const FeaturedProducts = () => {
-  const featuredProducts = [
-    {
-      id: 1,
-      name: 'HD 660S',
-      description: 'Reference-class open-back headphones',
-      price: 499.99,
-      image: '/images/products/hd660s.jpg',
-      brand: 'Sennheiser'
-    },
-    {
-      id: 2,
-      name: 'KEF LS50 Meta',
-      description: 'Audiophile loudspeakers',
-      price: 1499.99,
-      image: '/images/products/kef-ls50.jpg',
-      brand: 'KEF'
-    },
-    {
-      id: 3,
-      name: 'Cambridge CXA81',
-      description: 'Integrated stereo amplifier',
-      price: 1299.99,
-      image: '/images/products/cambridge-cxa81.jpg',
-      brand: 'Cambridge Audio'
-    },
-    {
-      id: 4,
-      name: 'Focal Clear MG',
-      description: 'High-end open-back headphones',
-      price: 1499.99,
-      image: '/images/products/focal-clear.jpg',
-      brand: 'Focal'
-    }
-  ];
+  const [featuredProducts, setFeaturedProducts] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchFeaturedProducts = async () => {
+      try {
+        const response = await api.get('/products', {
+          params: { featured: true, limit: 4 }
+        });
+        setFeaturedProducts(response.data.data);
+      } catch (error) {
+        console.error('Error fetching featured products:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchFeaturedProducts();
+  }, []);
+
+  if (loading) {
+    return (
+      <div className="flex justify-center items-center h-96">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-black"></div>
+      </div>
+    );
+  }
 
   return (
-    <section className="py-16 bg-gray-50">
+    <section className="py-24 bg-white">
       <div className="container mx-auto px-4">
-        <h3 className="text-2xl font-bold text-gray-900 mb-8">Featured Products</h3>
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+        <div className="flex justify-between items-end mb-12">
+          <div>
+            <h2 className="text-4xl font-bold text-black mb-4">Featured Collection</h2>
+            <p className="text-gray-600 max-w-2xl">Discover our carefully curated selection of premium audio equipment, chosen for exceptional performance and design excellence.</p>
+          </div>
+          <a href="/shop" className="hidden md:flex items-center space-x-2 text-black hover:text-gray-600 transition-colors">
+            <span className="font-medium">View All</span>
+            <ArrowRight className="w-5 h-5" />
+          </a>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
           {featuredProducts.map((product) => (
-            <ProductCard key={product.id} product={product} />
+            <ProductCard key={product._id} product={product} />
           ))}
+        </div>
+
+        <div className="mt-8 text-center md:hidden">
+          <a href="/shop" className="inline-flex items-center space-x-2 text-black hover:text-gray-600 transition-colors">
+            <span className="font-medium">View All Products</span>
+            <ArrowRight className="w-5 h-5" />
+          </a>
         </div>
       </div>
     </section>

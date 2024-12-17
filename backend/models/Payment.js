@@ -19,7 +19,8 @@ const paymentSchema = new mongoose.Schema({
   currency: {
     type: String,
     enum: ['USD', 'IDR'],
-    required: true
+    required: true,
+    default: 'USD'
   },
   status: {
     type: String,

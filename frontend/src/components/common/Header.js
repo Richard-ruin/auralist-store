@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { ShoppingCart, Search, Menu, User, Heart, LogOut } from 'lucide-react';
+import { ShoppingCart, Search, Menu, User, Heart, LogOut, Package } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import Navigation from './Navigation';
 import SearchBar from './SearchBar';
@@ -61,7 +61,11 @@ const Header = () => {
               />
               <ShoppingCart 
                 className="h-5 w-5 text-gray-700 cursor-pointer hover:text-gray-900 transition-colors"
-                onClick={() => user ? navigate('/cart') : navigate('/login')}
+                onClick={() => user ? navigate('/user/cart') : navigate('/login')}
+              />
+              <Package 
+                className="h-5 w-5 text-gray-700 cursor-pointer hover:text-gray-900 transition-colors"
+                onClick={() => user ? navigate('/user/orders') : navigate('/login')}
               />
             </div>
           </div>

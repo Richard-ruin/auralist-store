@@ -93,6 +93,23 @@ exports.deleteAddress = catchAsync(async (req, res) => {
   });
 });
 
+// Add this to your existing addressController.js
+exports.getDefaultAddress = catchAsync(async (req, res) => {
+  const defaultAddress = await Address.findOne({
+    user: req.user._id,
+    isDefault: true
+  });
+
+  if (!defaultAddress) {
+    throw new AppError('No default address found. Please add an address first.', 404);
+  }
+
+  res.status(200).json({
+    status: 'success',
+    data: defaultAddress
+  });
+});
+
 exports.setDefaultAddress = catchAsync(async (req, res) => {
   const address = await Address.findOneAndUpdate(
     { _id: req.params.id, user: req.user._id },

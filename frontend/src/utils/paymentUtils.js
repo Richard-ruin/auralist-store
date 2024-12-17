@@ -99,7 +99,7 @@ export const validateFileUpload = (file) => {
 };
 
 // Format currency
-export const formatCurrency = (amount, currency = 'IDR') => {
+export const formatCurrency = (amount, currency = 'USD') => {
   return new Intl.NumberFormat('id-ID', {
     style: 'currency',
     currency: currency,

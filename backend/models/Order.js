@@ -23,27 +23,21 @@ const orderSchema = new mongoose.Schema({
       required: true
     }
   }],
-  // Di model Order, update shippingAddress
-shippingAddress: {
-  type: mongoose.Schema.Types.ObjectId,
-  ref: 'Address',
-  required: true
-},
-  paymentMethod: {
-    type: String,
-    enum: ['visa', 'mastercard', 'bri', 'bca', 'mandiri'],
+  shippingAddress: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Address',
     required: true
   },
-  paymentStatus: {
+  paymentMethod: {
     type: String,
-    enum: ['pending', 'completed', 'failed', 'expired'],
-    default: 'pending'
+    enum: ['visa', 'mastercard', 'bri', 'bca', 'mandiri', 'pending'],
+    required: true
   },
   currency: {
     type: String,
     enum: ['USD', 'IDR'],
     required: true,
-    default: 'IDR'
+    default: 'USD'
   },
   totalAmount: {
     type: Number,
@@ -72,11 +66,22 @@ shippingAddress: {
 // Set currency based on payment method
 orderSchema.pre('save', function(next) {
   if (this.isModified('paymentMethod')) {
-    this.currency = ['visa', 'mastercard'].includes(this.paymentMethod) ? 'USD' : 'IDR';
+    // If payment method is pending or card-based, use USD
+    if (this.paymentMethod === 'pending' || 
+        this.paymentMethod === 'visa' || 
+        this.paymentMethod === 'mastercard') {
+      this.currency = 'USD';
+    } else {
+      // For Indonesian banks
+      this.currency = 'IDR';
+    }
   }
   next();
 });
-
 const Order = mongoose.model('Order', orderSchema);
+// Add these indexes to optimize queries
+orderSchema.index({ createdAt: -1 });
+orderSchema.index({ status: 1 });
+orderSchema.index({ paymentStatus: 1 });
 
 module.exports = Order;

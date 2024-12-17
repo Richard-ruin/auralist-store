@@ -32,11 +32,18 @@ const PaymentConfirmation = ({ orderId, paymentMethod, onBack, onSuccess }) => {
       setError('Please upload your payment proof');
       return;
     }
-
+  
     try {
+      console.log('Submitting payment with:', {
+        orderId,
+        paymentMethod,
+        proofImage: proofImage.name
+      });
+  
       await createPayment(orderId, paymentMethod, proofImage);
       onSuccess();
     } catch (error) {
+      console.error('Payment confirmation error:', error);
       setError(error.message || 'Failed to submit payment proof');
     }
   };
