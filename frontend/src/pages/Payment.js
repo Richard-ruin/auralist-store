@@ -100,6 +100,7 @@ const Payment = () => {
             selectedMethod={selectedMethod}
             onSelect={setSelectedMethod}
             onNext={() => setStep('details')}
+            orderId={orderId}
           />
         );
       case 'details':

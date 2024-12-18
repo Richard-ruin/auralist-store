@@ -1,7 +1,9 @@
 import React from 'react';
 import { CreditCard, Building2, Check } from 'lucide-react';
+import { toast } from 'react-hot-toast';
+import orderService from '../../services/order';
 
-const PaymentMethod = ({ selectedMethod, onSelect, onNext }) => {
+const PaymentMethod = ({ selectedMethod, onSelect, onNext, orderId }) => {
   // Predefined bank accounts with consistent naming
   const bankAccounts = {
     visa: {
@@ -31,6 +33,18 @@ const PaymentMethod = ({ selectedMethod, onSelect, onNext }) => {
     }
   };
 
+  const handleMethodSelect = async (methodId) => {
+    try {
+      // Update order dengan payment method yang dipilih
+      await orderService.updateOrder(orderId, {
+        paymentMethod: methodId
+      });
+      
+      onSelect(methodId);
+    } catch (error) {
+      toast.error('Failed to update payment method');
+    }
+  };
   // Payment method categories with icons
   const paymentCategories = [
     {
@@ -93,7 +107,7 @@ const PaymentMethod = ({ selectedMethod, onSelect, onNext }) => {
               {category.methods.map((method) => (
                 <button
                   key={method.id}
-                  onClick={() => onSelect(method.id)}
+                  onClick={() => handleMethodSelect(method.id)}
                   className={`relative rounded-lg border p-4 flex items-center 
                     transition-all duration-200 focus:outline-none focus:ring-2 
                     focus:ring-offset-2 focus:ring-indigo-500

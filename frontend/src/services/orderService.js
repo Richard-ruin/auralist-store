@@ -21,6 +21,19 @@ const orderService = {
     });
     return response.data;
   },
+  updateOrder: async (orderId, data) => {
+    try {
+      const response = await api.patch(`/orders/${orderId}`, data, {
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('token')}`
+        }
+      });
+      return response.data;
+    } catch (error) {
+      console.error('Error updating order:', error);
+      throw error;
+    }
+  },
 
   // Get single order details
   getOrderDetails: async (orderId) => {
@@ -28,5 +41,6 @@ const orderService = {
     return response.data;
   }
 };
+
 
 export default orderService;

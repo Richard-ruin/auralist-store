@@ -10,6 +10,7 @@ router.use(protect);
 // Public routes (customer)
 router.get('/my-orders', orderController.getUserOrders);
 router.post('/', validateCreateOrder, orderController.createOrder);
+router.patch('/:id', orderController.updateOrder);  // Tambahkan ini sebelum admin routes
 
 // Admin routes
 router.use(restrictTo('admin'));

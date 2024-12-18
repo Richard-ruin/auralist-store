@@ -30,8 +30,7 @@ const orderSchema = new mongoose.Schema({
   },
   paymentMethod: {
     type: String,
-    enum: ['visa', 'mastercard', 'bri', 'bca', 'mandiri', 'pending'],
-    required: true
+    enum: ['visa', 'mastercard', 'bri', 'bca', 'mandiri', 'pending']
   },
   currency: {
     type: String,

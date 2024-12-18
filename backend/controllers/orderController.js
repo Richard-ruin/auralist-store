@@ -8,32 +8,14 @@ const mongoose = require('mongoose'); // Add this import
 
 exports.createOrder = catchAsync(async (req, res, next) => {
   try {
-    console.log('Received order data:', req.body);
-    
     const {
       items,
       shippingAddress,
-      paymentMethod,
       totalAmount,
       currency = 'USD'
     } = req.body;
 
-    // Validate MongoDB ObjectId
-    if (!mongoose.Types.ObjectId.isValid(shippingAddress)) {
-      return next(new AppError('Invalid shipping address ID', 400));
-    }
-
-    // Check if address exists and belongs to user
-    const address = await Address.findOne({
-      _id: shippingAddress,
-      user: req.user._id
-    });
-
-    if (!address) {
-      return next(new AppError('Shipping address not found or does not belong to user', 400));
-    }
-
-    // Create order object
+    // Create order tanpa payment method
     const orderData = {
       user: req.user._id,
       items: items.map(item => ({
@@ -42,17 +24,12 @@ exports.createOrder = catchAsync(async (req, res, next) => {
         price: Number(item.price)
       })),
       shippingAddress,
-      paymentMethod: paymentMethod || 'pending',
       totalAmount: Number(totalAmount),
       currency,
-      paymentExpiredAt: new Date(Date.now() + 5 * 60 * 1000) // 5 minutes
+      status: 'processing' // default status
     };
 
-    console.log('Creating order with data:', orderData);
-
     const order = await Order.create(orderData);
-    
-    console.log('Order created successfully:', order);
 
     res.status(201).json({
       status: 'success',
@@ -61,18 +38,34 @@ exports.createOrder = catchAsync(async (req, res, next) => {
       }
     });
   } catch (error) {
-    console.error('Error creating order:', {
-      name: error.name,
-      message: error.message,
-      stack: error.stack
-    });
-    
-    if (error.name === 'ValidationError') {
-      return next(new AppError(error.message, 400));
-    }
-    
     next(error);
   }
+});
+
+exports.updateOrder = catchAsync(async (req, res, next) => {
+  // Verify user owns the order
+  const order = await Order.findOne({
+    _id: req.params.id,
+    user: req.user._id
+  });
+
+  if (!order) {
+    return next(new AppError('Order not found or unauthorized', 403));
+  }
+
+  // Update order
+  const updatedOrder = await Order.findByIdAndUpdate(
+    req.params.id,
+    { paymentMethod: req.body.paymentMethod },
+    { new: true, runValidators: true }
+  );
+
+  res.status(200).json({
+    status: 'success',
+    data: {
+      order: updatedOrder
+    }
+  });
 });
 
 exports.getOrders = catchAsync(async (req, res) => {

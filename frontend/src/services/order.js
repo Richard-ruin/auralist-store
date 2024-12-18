@@ -35,9 +35,9 @@ const orderService = {
     return response;
   },
 
-  updateOrder: async (orderId, updateData) => {
-    const response = await api.patch(`/orders/${orderId}`, updateData);
-    return response;
+  updateOrder: async (orderId, data) => {
+    const response = await api.patch(`/orders/${orderId}`, data);
+    return response.data;
   },
 
   getMyOrders: async () => {

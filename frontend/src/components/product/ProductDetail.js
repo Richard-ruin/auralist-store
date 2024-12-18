@@ -108,12 +108,10 @@ const ProductDetail = () => {
     try {
       setBuyLoading(true);
       
-      // Get default address
       let defaultAddress;
       try {
         const addressResponse = await api.get('/addresses/default');
         defaultAddress = addressResponse.data.data;
-        console.log('Got default address:', defaultAddress);
       } catch (error) {
         if (error.response?.status === 404) {
           toast.error('Please set a default shipping address first');
@@ -123,24 +121,20 @@ const ProductDetail = () => {
         throw error;
       }
   
-      // Prepare order data
+      // Prepare order data - tanpa payment method karena akan diset di payment
       const orderData = {
         items: [{
           product: product._id,
           quantity: Number(quantity),
           price: Number(product.price)
         }],
-        shippingAddress: defaultAddress._id, // Send just the ID
-        paymentMethod: 'pending',
+        shippingAddress: defaultAddress._id,
         totalAmount: Number(product.price * quantity)
       };
   
-      console.log('Sending order data:', orderData);
-  
       const response = await orderService.createOrder(orderData);
-      console.log('Order created:', response.data);
   
-      // Navigate to payment page
+      // Navigate dengan data yang lebih lengkap
       navigate(`/user/payment/${response.data.data.order._id}`, {
         state: {
           order: {
