@@ -41,6 +41,66 @@ exports.createOrder = catchAsync(async (req, res, next) => {
     next(error);
   }
 });
+exports.getOrderStats = catchAsync(async (req, res) => {
+  const now = new Date();
+  const firstDayOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+
+  const [orders, monthlyOrders, stats] = await Promise.all([
+    // Get all orders for basic stats
+    Order.find().select('status totalAmount createdAt'),
+    
+    // Get this month's orders
+    Order.find({
+      createdAt: { $gte: firstDayOfMonth }
+    }).select('totalAmount'),
+
+    // Get aggregated stats
+    Order.aggregate([
+      {
+        $facet: {
+          pending: [
+            { $match: { status: 'pending' } },
+            { $count: 'count' }
+          ],
+          processing: [
+            { $match: { status: 'processing' } },
+            { $count: 'count' }
+          ],
+          monthly: [
+            {
+              $group: {
+                _id: { 
+                  year: { $year: '$createdAt' },
+                  month: { $month: '$createdAt' }
+                },
+                count: { $sum: 1 },
+                totalAmount: { $sum: '$totalAmount' }
+              }
+            },
+            { $sort: { '_id.year': -1, '_id.month': -1 } },
+            { $limit: 12 }
+          ]
+        }
+      }
+    ])
+  ]);
+
+  const total = orders.length;
+  const thisMonth = monthlyOrders.length;
+  const pending = stats[0].pending[0]?.count || 0;
+  const processing = stats[0].processing[0]?.count || 0;
+
+  res.status(200).json({
+    status: 'success',
+    data: {
+      total,
+      thisMonth,
+      pending,
+      processing,
+      monthly: stats[0].monthly
+    }
+  });
+});
 
 exports.updateOrder = catchAsync(async (req, res, next) => {
   // Verify user owns the order
@@ -99,16 +159,42 @@ exports.getOrder = catchAsync(async (req, res) => {
   });
 });
 
+// Add this to controllers/orderController.js
 exports.updateOrderStatus = catchAsync(async (req, res) => {
-  const order = await Order.findByIdAndUpdate(
-    req.params.id,
-    { status: req.body.status },
-    { new: true, runValidators: true }
-  );
+  const { orderId } = req.params;
+  const { status, notes } = req.body;
+
+  // Validate status
+  const validStatuses = ['confirmed', 'shipped', 'delivered'];
+  if (!validStatuses.includes(status)) {
+    throw new AppError('Invalid order status', 400);
+  }
+
+  // Find and update the order
+  const order = await Order.findById(orderId);
 
   if (!order) {
-    throw new AppError('No order found with that ID', 404);
+    throw new AppError('Order not found', 404);
   }
+
+  // Validate status transition
+  const validTransitions = {
+    'confirmed': ['shipped'],
+    'shipped': ['delivered'],
+    'delivered': []
+  };
+
+  if (!validTransitions[order.status]?.includes(status)) {
+    throw new AppError(`Invalid status transition from ${order.status} to ${status}`, 400);
+  }
+
+  // Update order
+  order.status = status;
+  order.notes = notes;
+  order.updatedAt = Date.now();
+  order.updatedBy = req.user._id;
+
+  await order.save();
 
   res.status(200).json({
     status: 'success',

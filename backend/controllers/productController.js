@@ -1,13 +1,57 @@
 const Product = require('../models/Product');
 const Brand = require('../models/Brand');
 const Category = require('../models/Category');
+const catchAsync = require('../utils/catchAsync');
+const AppError = require('../utils/appError');
 const slugify = require('slugify');
 const fs = require('fs');
 const path = require('path');
 
 // CREATE PRODUCT
 // controllers/productController.js
+exports.getProductStats = catchAsync(async (req, res) => {
+  const stats = await Product.aggregate([
+    {
+      $facet: {
+        categoryStats: [
+          {
+            $group: {
+              _id: '$category',
+              count: { $sum: 1 },
+              totalStock: { $sum: '$stock' }
+            }
+          },
+          {
+            $lookup: {
+              from: 'categories',
+              localField: '_id',
+              foreignField: '_id',
+              as: 'category'
+            }
+          }
+        ],
+        stockAlert: [
+          {
+            $match: {
+              $expr: {
+                $lte: ['$stock', '$lowStockThreshold']
+              }
+            }
+          },
+          { $count: 'count' }
+        ]
+      }
+    }
+  ]);
 
+  res.status(200).json({
+    status: 'success',
+    data: {
+      categories: stats[0].categoryStats,
+      lowStock: stats[0].stockAlert[0]?.count || 0
+    }
+  });
+});
 exports.createProduct = async (req, res) => {
   try {
     // Validate required files
@@ -301,3 +345,4 @@ exports.deleteProduct = async (req, res) => {
     });
   }
 };
+
