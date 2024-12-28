@@ -78,23 +78,25 @@ const App = () => {
         } />
 
         {/* Public Routes */}
-        <Route element={<MainLayout />}>
-          <Route index element={<HomePage />} />
-          <Route path="/shop" element={<ShopPage />} />
-          <Route path="/product/:id" element={<ProductDetail />} />
-          <Route path="/categories" element={<CategoriesPage />} />
-          <Route path="/brands" element={<BrandsPage />} />
-          <Route path="/about" element={<AboutPage />} />
-          <Route path="/contact" element={<ContactPage />} />
-          
-          
-          {/* User Protected Routes */}
-          <Route path="/user/*" element={
-            <ProtectedRoute allowedRoles={['customer']}>
-              <UserRoutes />
-            </ProtectedRoute>
-          } />
-        </Route>
+<Route element={<MainLayout />}>
+  <Route index element={<HomePage />} />
+  <Route path="/shop" element={<ShopPage />} />
+  <Route path="/product/:id" element={<ProductDetail />} />
+  <Route path="/categories" element={<CategoriesPage />} />
+  <Route path="/brands" element={<BrandsPage />} />
+  <Route path="/about" element={<AboutPage />} />
+  <Route path="/contact" element={<ContactPage />} />
+  <Route path="/search" element={<ShopPage />} />
+  <Route path="/brands/:brandSlug" element={<ShopPage />} />
+  <Route path="/categories/:categorySlug" element={<ShopPage />} />
+  
+  {/* User Protected Routes */}
+  <Route path="/user/*" element={
+    <ProtectedRoute allowedRoles={['customer']}>
+      <UserRoutes />
+    </ProtectedRoute>
+  } />
+</Route>
 
         {/* 404 Route */}
         <Route path="*" element={<NotFoundPage />} />

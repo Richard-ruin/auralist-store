@@ -84,6 +84,25 @@ const OrderManager = () => {
       setLoading(false);
     }
   };
+  const handleStatusUpdate = async (status, notes) => {
+    if (!selectedOrder) {
+      toast.error('No order selected');
+      return;
+    }
+  
+    try {
+      await orderService.updateOrderStatus(selectedOrder._id, {
+        status,
+        notes
+      });
+      await fetchData(); // Refresh data
+      setIsModalOpen(false);
+      toast.success(`Order status updated to ${status}`);
+    } catch (error) {
+      console.error('Error updating order status:', error);
+      toast.error(error.response?.data?.message || 'Failed to update order status');
+    }
+  };
 
   const getStatusColor = (status) => {
     if (!status) return 'bg-gray-100 text-gray-800';
@@ -387,15 +406,16 @@ const OrderManager = () => {
   />
 </div>
 
-      <OrderConfirmationModal
-        isOpen={isModalOpen}
-        onClose={() => {
-          setIsModalOpen(false);
-          setSelectedOrder(null);
-        }}
-        onConfirm={handleConfirmPayment}
-        order={selectedOrder}
-      />
+<OrderConfirmationModal
+  isOpen={isModalOpen}
+  onClose={() => {
+    setIsModalOpen(false);
+    setSelectedOrder(null);
+  }}
+  onConfirm={handleConfirmPayment}
+  onStatusUpdate={handleStatusUpdate}
+  order={selectedOrder}
+/>
     </div>
   );
 };

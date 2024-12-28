@@ -89,10 +89,10 @@ const BrandSection = () => {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {brands.map((brand) => (
             <div
-              key={brand._id}
-              onClick={() => navigate(`/shop?brand=${brand.slug}`)}
-              className="group cursor-pointer bg-white rounded-lg overflow-hidden border border-gray-200 hover:shadow-lg transition-all duration-300"
-            >
+            key={brand._id}
+            onClick={() => navigate(`/brands/${brand.slug}`)}  // Updated navigation
+            className="group cursor-pointer bg-white rounded-lg overflow-hidden border border-gray-200 hover:shadow-lg transition-all duration-300"
+          >
               <div className="flex">
                 {/* Brand Logo Section */}
                 <div className="w-1/3 relative bg-gray-50 p-4">

@@ -20,6 +20,12 @@ const OrderSummary = ({ orderData }) => {
     }
   };
 
+  const getImageUrl = (image) => {
+    if (!image) return '/api/placeholder/400/320';
+    if (image.startsWith('http')) return image;
+    return `${process.env.REACT_APP_API_URL}/images/products/${image}`;
+  };
+
   return (
     <div className="bg-white rounded-lg shadow-md">
       {/* Header */}
@@ -38,11 +44,11 @@ const OrderSummary = ({ orderData }) => {
             <div key={index} className="flex space-x-4">
               <div className="flex-shrink-0 w-20 h-20">
                 <img
-                  src={item.product?.image || item.image || 'https://via.placeholder.com/80'}
+                  src={getImageUrl(item.product?.mainImage || item.image)}
                   alt={item.product?.name || item.name || 'Product'}
                   className="w-full h-full object-cover rounded-md"
                   onError={(e) => {
-                    e.target.src = 'https://via.placeholder.com/80';
+                    e.target.src = '/api/placeholder/400/320';
                   }}
                 />
               </div>

@@ -1,23 +1,27 @@
+
+// src/components/common/SearchBar.js
 import React, { useState } from 'react';
 import { Search, X } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 
 const SearchBar = () => {
   const [isExpanded, setIsExpanded] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
+  const navigate = useNavigate();
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    // Handle search logic
-    console.log('Search query:', searchQuery);
+    if (searchQuery.trim()) {
+      navigate(`/search?q=${encodeURIComponent(searchQuery.trim())}`);
+      setIsExpanded(false);
+      setSearchQuery('');
+    }
   };
 
   return (
     <div className="relative">
       {isExpanded ? (
-        <form 
-          onSubmit={handleSubmit}
-          className="absolute right-0 top-1/2 transform -translate-y-1/2"
-        >
+        <form onSubmit={handleSubmit} className="absolute right-0 top-1/2 transform -translate-y-1/2">
           <div className="flex items-center bg-gray-100 rounded-md">
             <input
               type="text"
@@ -32,7 +36,10 @@ const SearchBar = () => {
             </button>
             <button 
               type="button"
-              onClick={() => setIsExpanded(false)}
+              onClick={() => {
+                setIsExpanded(false);
+                setSearchQuery('');
+              }}
               className="p-2"
             >
               <X className="h-5 w-5 text-gray-700" />
@@ -40,10 +47,7 @@ const SearchBar = () => {
           </div>
         </form>
       ) : (
-        <button 
-          onClick={() => setIsExpanded(true)}
-          className="focus:outline-none"
-        >
+        <button onClick={() => setIsExpanded(true)} className="focus:outline-none">
           <Search className="h-5 w-5 text-gray-700" />
         </button>
       )}

@@ -89,10 +89,10 @@ const CategorySection = () => {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
           {categories.map((category) => (
             <div
-              key={category._id}
-              onClick={() => navigate(`/shop?category=${category.slug}`)}
-              className="relative h-64 bg-gray-100 rounded-lg overflow-hidden group cursor-pointer transform transition duration-300 hover:scale-105 hover:shadow-xl"
-            >
+            key={category._id}
+            onClick={() => navigate(`/categories/${category.slug}`)}  // Updated navigation
+            className="relative h-64 bg-gray-100 rounded-lg overflow-hidden group cursor-pointer transform transition duration-300 hover:scale-105 hover:shadow-xl"
+          >
               {category.image ? (
                 <div
                   className="absolute inset-0 bg-cover bg-center transition-transform duration-500 group-hover:scale-110"

@@ -167,10 +167,8 @@ const ProductModal = ({ product, onClose, onSuccess }) => {
         toast.success('Product created successfully');
       }
   
-      if (onSuccess) {
-        onSuccess(response.data);
-      }
-      onClose();
+      // Panggil onClose dengan parameter true untuk memicu refresh
+      onClose(true);
     } catch (error) {
       console.error('Error saving product:', error);
       toast.error(error.response?.data?.message || 'Failed to save product');

@@ -11,7 +11,7 @@ const Cart = () => {
   const { cart, loading, clearCart } = useCart();
 
   const handleCheckout = () => {
-    navigate('/checkout');
+    navigate('/user/checkout');
   };
 
   if (loading && !cart) {

@@ -91,9 +91,9 @@ const BrandPage = () => {
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
             {brands.map((brand) => (
               <Link
-                key={brand._id}
-                to={`/shop?brand=${brand.slug}`}
-                className="group block"
+              key={brand._id}
+              to={`/brands/${brand.slug}`}
+              className="group block"
               >
                 <div className="bg-white border border-gray-200 rounded-lg overflow-hidden transition-all duration-300 hover:shadow-xl">
                   <div className="relative aspect-w-16 aspect-h-9">
