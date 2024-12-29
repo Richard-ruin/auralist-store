@@ -2,18 +2,17 @@
 const nodemailer = require('nodemailer');
 
 // Konfigurasi transporter email
+// Modifikasi konfigurasi transporter
 const transporter = nodemailer.createTransport({
   host: process.env.EMAIL_HOST,
-  port: process.env.EMAIL_PORT,
-  secure: false, // true for 465, false for other ports
+  port: parseInt(process.env.EMAIL_PORT), // Pastikan port adalah number, bukan string
+  secure: true, // Ubah menjadi true karena menggunakan port 465
   auth: {
     user: process.env.EMAIL_USERNAME,
     pass: process.env.EMAIL_PASSWORD,
   },
-  // Tambahan konfigurasi untuk Gmail
-  tls: {
-    rejectUnauthorized: false
-  }
+  debug: true, // Tambahkan untuk debugging
+  logger: true // Tambahkan untuk logging detail
 });
 
 // Template email class
@@ -110,17 +109,22 @@ const sendVerificationEmail = async (user) => {
   }
 };
 
-const sendPasswordResetEmail = async (user) => {
+const sendPasswordResetEmail = async (user, resetToken) => {
   try {
-    const resetUrl = `${process.env.FRONTEND_URL}/reset-password/${user.resetPasswordToken}`;
+    console.log('Starting to send password reset email');
+    const resetUrl = `${process.env.FRONTEND_URL}/reset-password/${resetToken}`;
+    console.log('Reset URL created:', resetUrl);
+
+    // Gunakan class Email yang sudah ada
     const email = new Email(user, resetUrl);
     await email.send('resetPassword', 'Password Reset Request');
+    
+    console.log('Password reset email sent successfully');
   } catch (error) {
-    console.error('Error sending password reset email:', error);
+    console.error('Detailed error in sendPasswordResetEmail:', error);
     throw new Error('Error sending password reset email');
   }
 };
-
 const sendOrderConfirmation = async (user, order) => {
   try {
     const orderUrl = `${process.env.FRONTEND_URL}/orders/${order._id}`;
@@ -146,6 +150,13 @@ const sendPaymentConfirmation = async (user, order) => {
 // Simple send function for custom emails
 const sendEmail = async ({ to, subject, text, html }) => {
   try {
+    console.log('Attempting to send email with configuration:', {
+      host: process.env.EMAIL_HOST,
+      port: process.env.EMAIL_PORT,
+      user: process.env.EMAIL_USERNAME,
+      from: process.env.EMAIL_FROM
+    });
+
     const mailOptions = {
       from: process.env.EMAIL_FROM,
       to,
@@ -154,10 +165,20 @@ const sendEmail = async ({ to, subject, text, html }) => {
       html: html || `<div style="font-family: Arial, sans-serif; padding: 20px;">${text}</div>`
     };
 
-    await transporter.sendMail(mailOptions);
+    console.log('Sending email with options:', { to, subject });
+    const info = await transporter.sendMail(mailOptions);
+    console.log('Email sent successfully:', info.messageId);
+    return info;
   } catch (error) {
-    console.error('Error sending email:', error);
-    throw new Error('Error sending email');
+    console.error('Detailed email error:', {
+      error: error.message,
+      code: error.code,
+      command: error.command
+    });
+    const emailError = new Error('Failed to send email');
+    emailError.name = 'EmailError';
+    emailError.originalError = error;
+    throw emailError;
   }
 };
 

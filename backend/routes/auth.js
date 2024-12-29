@@ -15,7 +15,13 @@ const {
 // Public routes
 router.post('/register', register);
 router.post('/login', login);
-router.post('/forgot-password', forgotPassword);
+router.post('/forgot-password', (req, res, next) => {
+  console.log('Forgot password request received:', {
+    email: req.body.email,
+    timestamp: new Date().toISOString()
+  });
+  forgotPassword(req, res, next);
+});
 router.patch('/reset-password/:token', resetPassword);
 router.get('/verify-email/:token', verifyEmail);
 

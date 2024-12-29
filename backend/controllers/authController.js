@@ -3,8 +3,7 @@ const jwt = require('jsonwebtoken');
 const User = require('../models/User');
 const catchAsync = require('../utils/catchAsync');
 const AppError = require('../utils/appError');
-const { sendEmail } = require('../utils/email');
-
+const { sendEmail, sendPasswordResetEmail } = require('../utils/email');
 // Generate JWT token
 const signToken = (id) => {
   return jwt.sign({ id }, process.env.JWT_SECRET, {
@@ -65,39 +64,55 @@ exports.login = catchAsync(async (req, res, next) => {
 
 // Forgot Password
 exports.forgotPassword = catchAsync(async (req, res, next) => {
+  console.log('Received forgot password request:', req.body);
+  
   // Find user
   const user = await User.findOne({ email: req.body.email });
   if (!user) {
     return next(new AppError('No user found with that email', 404));
   }
-
-  // Generate reset token
-  const resetToken = crypto.randomBytes(32).toString('hex');
-  user.resetPasswordToken = crypto
-    .createHash('sha256')
-    .update(resetToken)
-    .digest('hex');
-  user.resetPasswordExpires = Date.now() + 10 * 60 * 1000; // 10 minutes
-
-  await user.save({ validateBeforeSave: false });
+  console.log('User found:', user.email);
 
   try {
-    await sendEmail({
-      email: user.email,
-      subject: 'Password Reset Token',
-      html: `Reset your password here: ${req.protocol}://${req.get('host')}/reset-password/${resetToken}`
-    });
+    // Generate reset token
+    const resetToken = crypto.randomBytes(32).toString('hex');
+    console.log('Reset token generated');
 
-    res.status(200).json({
-      status: 'success',
-      message: 'Token sent to email'
-    });
-  } catch (err) {
-    user.resetPasswordToken = undefined;
-    user.resetPasswordExpires = undefined;
+    user.resetPasswordToken = crypto
+      .createHash('sha256')
+      .update(resetToken)
+      .digest('hex');
+    user.resetPasswordExpires = Date.now() + 10 * 60 * 1000; // 10 minutes
+
     await user.save({ validateBeforeSave: false });
+    console.log('User saved with reset token');
 
-    return next(new AppError('Error sending email. Please try again later.', 500));
+    // Create reset URL
+    const resetURL = `${process.env.FRONTEND_URL}/reset-password/${resetToken}`;
+    console.log('Reset URL:', resetURL);
+
+    try {
+      // Send email using imported function
+      await sendPasswordResetEmail(user, resetToken);
+      console.log('Reset email sent successfully');
+
+      res.status(200).json({
+        status: 'success',
+        message: 'Token sent to email'
+      });
+    } catch (emailError) {
+      console.error('Error sending email:', emailError);
+      
+      // Rollback the reset token
+      user.resetPasswordToken = undefined;
+      user.resetPasswordExpires = undefined;
+      await user.save({ validateBeforeSave: false });
+
+      return next(new AppError('Error sending email. Please try again later.', 500));
+    }
+  } catch (error) {
+    console.error('Error in forgot password process:', error);
+    return next(new AppError('Error in password reset process', 500));
   }
 });
 

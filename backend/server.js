@@ -3,6 +3,7 @@ const mongoose = require('mongoose');
 const cors = require('cors');
 const morgan = require('morgan');
 const path = require('path');
+const nodemailer = require('nodemailer');
 require('dotenv').config();
 
 // Import routes
@@ -24,6 +25,30 @@ const corsOptions = {
   optionsSuccessStatus: 200
 };
 
+const verifyEmailConfig = async () => {
+  try {
+    console.log('Verifying email configuration...');
+    const transporter = nodemailer.createTransport({
+      host: process.env.EMAIL_HOST,
+      port: process.env.EMAIL_PORT,
+      secure: process.env.EMAIL_PORT === '465',
+      auth: {
+        user: process.env.EMAIL_USERNAME,
+        pass: process.env.EMAIL_PASSWORD,
+      },
+      tls: {
+        rejectUnauthorized: false
+      }
+    });
+
+    const verify = await transporter.verify();
+    console.log('Email configuration verified:', verify);
+  } catch (error) {
+    console.error('Email configuration error:', error);
+  }
+};
+
+verifyEmailConfig();
 // Import error handler
 const errorHandler = require('./middleware/errorHandler');
 
@@ -71,6 +96,23 @@ app.use('/api/cart', cartRoutes);
 
 // Error handling
 app.use(errorHandler);
+app.use((err, req, res, next) => {
+  console.error('Global Error:', {
+    name: err.name,
+    message: err.message,
+    stack: process.env.NODE_ENV === 'development' ? err.stack : undefined
+  });
+  
+  res.status(err.statusCode || 500).json({
+    status: 'error',
+    message: err.message || 'Internal server error',
+    error: process.env.NODE_ENV === 'development' ? {
+      name: err.name,
+      message: err.message,
+      stack: err.stack
+    } : {}
+  });
+});
 
 // Handle undefined routes
 app.use('*', (req, res) => {

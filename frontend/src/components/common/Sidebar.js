@@ -8,7 +8,7 @@ const Sidebar = ({ isOpen, onClose }) => {
     { path: '/shop', label: 'Shop' },
     { path: '/categories', label: 'Categories' },
     { path: '/about', label: 'About' },
-  ];
+    { path : '/brands', label: 'Brands' },];
 
   return (
     <>
@@ -74,35 +74,7 @@ const Sidebar = ({ isOpen, onClose }) => {
           </div>
         </div>
 
-        {/* Categories Section */}
-        <div className="border-t px-6 py-4">
-          <h3 className="text-sm font-semibold text-gray-400 uppercase">
-            Categories
-          </h3>
-          <div className="mt-4 space-y-2">
-            <Link
-              to="/category/headphones"
-              className="block py-2 text-gray-600 hover:text-gray-900"
-              onClick={onClose}
-            >
-              Headphones
-            </Link>
-            <Link
-              to="/category/speakers"
-              className="block py-2 text-gray-600 hover:text-gray-900"
-              onClick={onClose}
-            >
-              Speakers
-            </Link>
-            <Link
-              to="/category/amplifiers"
-              className="block py-2 text-gray-600 hover:text-gray-900"
-              onClick={onClose}
-            >
-              Amplifiers
-            </Link>
-          </div>
-        </div>
+        
       </div>
     </>
   );

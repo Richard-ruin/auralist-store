@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
+import { forgotPassword } from '../../services/auth'; // Import fungsi forgotPassword
 
 const ForgotPassword = () => {
   const [email, setEmail] = useState('');
@@ -14,23 +15,11 @@ const ForgotPassword = () => {
     setMessage('');
 
     try {
-      const response = await fetch('http://localhost:5000/api/auth/forgot-password', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({ email })
-      });
-
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data.message || 'Failed to send reset email');
-      }
-
+      // Gunakan fungsi forgotPassword dari auth service
+      const response = await forgotPassword(email);
       setMessage('Reset password instructions have been sent to your email');
     } catch (err) {
-      setError(err.message);
+      setError(err.message || 'Failed to send reset email');
     } finally {
       setLoading(false);
     }

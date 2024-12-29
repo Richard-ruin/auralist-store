@@ -53,6 +53,30 @@ const sendErrorProd = (err, res) => {
   }
 };
 
+const handleEmailError = (err) => {
+  console.error('Email Error Details:', err);
+  return new AppError('Failed to send email. Please try again later.', 500);
+};
+
+const errorHandler = (err, req, res, next) => {
+  console.error('Error:', {
+    name: err.name,
+    message: err.message,
+    stack: err.stack
+  });
+
+  if (err.name === 'EmailError') {
+    err = handleEmailError(err);
+  }
+
+  res.status(err.statusCode || 500).json({
+    status: 'error',
+    message: err.message,
+    error: process.env.NODE_ENV === 'development' ? err : {}
+  });
+};
+
+
 module.exports = (err, req, res, next) => {
   err.statusCode = err.statusCode || 500;
   err.status = err.status || 'error';
