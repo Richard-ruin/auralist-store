@@ -9,6 +9,8 @@ const UserModal = ({ isOpen, onClose, user, onSubmit }) => {
     phoneNumber: '',
     role: 'customer',
     password: '', // Only for new users
+    status: 'active',
+    statusReason: ''
   });
 
   useEffect(() => {
@@ -18,6 +20,8 @@ const UserModal = ({ isOpen, onClose, user, onSubmit }) => {
         email: user.email || '',
         phoneNumber: user.phoneNumber || '',
         role: user.role || 'customer',
+        status: user.status || 'active',
+        statusReason: '',
         password: '', // Exclude password when editing
       });
     } else {
@@ -26,6 +30,8 @@ const UserModal = ({ isOpen, onClose, user, onSubmit }) => {
         email: '',
         phoneNumber: '',
         role: 'customer',
+        status: 'active',
+        statusReason: '',
         password: '',
       });
     }
@@ -62,6 +68,7 @@ const UserModal = ({ isOpen, onClose, user, onSubmit }) => {
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-4">
+          {/* Existing form fields */}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
               Name
@@ -118,6 +125,45 @@ const UserModal = ({ isOpen, onClose, user, onSubmit }) => {
             </select>
           </div>
 
+          {/* New status fields */}
+          {user && (
+            <>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Status
+                </label>
+                <select
+                  name="status"
+                  value={formData.status}
+                  onChange={handleChange}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                >
+                  <option value="active">Active</option>
+                  <option value="inactive">Inactive</option>
+                  <option value="suspended">Suspended</option>
+                </select>
+              </div>
+
+              {formData.status !== user.status && (
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Reason for Status Change
+                  </label>
+                  <textarea
+                    name="statusReason"
+                    value={formData.statusReason}
+                    onChange={handleChange}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                    rows="3"
+                    required
+                    placeholder="Please provide a reason for changing the user's status"
+                  />
+                </div>
+              )}
+            </>
+          )}
+
+          {/* Password field for new users */}
           {!user && (
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">

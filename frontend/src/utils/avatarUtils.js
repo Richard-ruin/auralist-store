@@ -1,5 +1,5 @@
-// utils/helpers.js
-const generateAvatar = (name) => {
+// frontend/src/utils/avatarUtils.js
+export const generateDefaultAvatar = (name) => {
     // Array of pleasant colors (excluding black and white)
     const colors = [
       '#1abc9c', '#2ecc71', '#3498db', '#9b59b6', '#34495e',
@@ -20,9 +20,5 @@ const generateAvatar = (name) => {
       </svg>
     `;
     
-    // Convert SVG to base64
-    const base64 = Buffer.from(svg).toString('base64');
-    return `data:image/svg+xml;base64,${base64}`;
+    return `data:image/svg+xml;base64,${btoa(svg)}`;
   };
-  
-  module.exports = { generateAvatar };

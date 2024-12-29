@@ -1,24 +1,33 @@
-// backend/routes/users.js
+// routes/users.js
 const express = require('express');
 const router = express.Router();
 const userController = require('../controllers/userController');
+const uploadProfile = require('../middleware/uploadProfile');
 const { protect, restrictTo } = require('../middleware/auth');
 
-router.use(protect); // Protect all routes after this middleware
-router.use(restrictTo('admin')); // Only admin can access these routes
+// Protect all routes after this middleware
+router.use(protect);
 
-router
-  .route('/')
-  .get(userController.getAllUsers);
+// Avatar routes
+router.post(
+  '/:id/avatar',
+  uploadProfile.single('avatar'), // Specify the field name
+  userController.updateAvatar  // Make sure this is a function, not an object
+);
 
-router
-  .route('/stats')
-  .get(userController.getUserStats);
+router.post(
+  '/:id/avatar/reset',
+  userController.resetToGeneratedAvatar
+);
 
-router
-  .route('/:id')
-  .get(userController.getUser)
-  .patch(userController.updateUser)
-  .delete(userController.deleteUser);
+// Admin routes
+router.get('/', restrictTo('admin'), userController.getAllUsers);
+router.get('/stats', restrictTo('admin'), userController.getUserStats);
+router.patch('/:id/status', protect, restrictTo('admin'), userController.updateUserStatus);
+router.get('/:id/status-history', protect, restrictTo('admin'), userController.getUserStatusHistory);
+router.route('/:id')
+  .get(restrictTo('admin'), userController.getUser)
+  .patch(restrictTo('admin'), userController.updateUser)
+  .delete(restrictTo('admin'), userController.deleteUser);
 
 module.exports = router;

@@ -48,16 +48,24 @@ exports.register = catchAsync(async (req, res, next) => {
 exports.login = catchAsync(async (req, res, next) => {
   const { email, password } = req.body;
 
-  // Check if email and password exist
   if (!email || !password) {
     return next(new AppError('Please provide email and password', 400));
   }
 
-  // Check if user exists & password is correct
   const user = await User.findOne({ email }).select('+password');
+  
   if (!user || !(await user.comparePassword(password))) {
     return next(new AppError('Incorrect email or password', 401));
   }
+
+  // Check if user is active
+  if (user.status !== 'active') {
+    return next(new AppError(`Your account is ${user.status}. Please contact support.`, 401));
+  }
+
+  // Update last login
+  user.lastLogin = new Date();
+  await user.save({ validateBeforeSave: false });
 
   createSendToken(user, 200, res);
 });

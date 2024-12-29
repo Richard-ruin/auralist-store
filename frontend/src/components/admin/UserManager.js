@@ -216,21 +216,45 @@ const UserManager = () => {
               users.map((user) => (
                 <tr key={user._id} className="hover:bg-gray-50">
                   <td className="px-6 py-4 whitespace-nowrap">
-                    <div className="flex items-center">
-                      <div className="h-10 w-10 flex-shrink-0">
-                        <div className="h-10 w-10 rounded-full bg-gray-200 flex items-center justify-center">
-                          <span className="text-xl font-medium text-gray-500">
-                            {user.name.charAt(0)}
-                          </span>
-                        </div>
-                      </div>
-                      <div className="ml-4">
-                        <div className="text-sm font-medium text-gray-900">
-                          {user.name}
-                        </div>
-                      </div>
-                    </div>
-                  </td>
+  <div className="flex items-center">
+    <div className="h-10 w-10 flex-shrink-0">
+      {user.avatar ? (
+        <img
+          src={user.avatar.startsWith('data:') 
+            ? user.avatar 
+            : `${process.env.REACT_APP_IMAGE_BASE_URL}/profiles/${user.avatar}`
+          }
+          alt={user.name}
+          className="h-10 w-10 rounded-full object-cover"
+          onError={(e) => {
+            e.target.onerror = null;
+            // Fallback ke inisial jika gambar gagal dimuat
+            e.target.style.display = 'none';
+            e.target.nextElementSibling.style.display = 'flex';
+          }}
+        />
+      ) : (
+        <div 
+          className="h-10 w-10 rounded-full bg-indigo-100 flex items-center justify-center"
+          title={user.name}
+        >
+          <span className="text-xl font-medium text-indigo-700">
+            {user.name.charAt(0).toUpperCase()}
+          </span>
+        </div>
+      )}
+    </div>
+    <div className="ml-4">
+      <div className="text-sm font-medium text-gray-900">
+        {user.name}
+      </div>
+      <div className="text-sm text-gray-500">
+        User ID: {user._id.substring(0, 8)}...
+      </div>
+    </div>
+  </div>
+</td>
+
                   <td className="px-6 py-4 whitespace-nowrap">
                     <div className="flex flex-col space-y-1">
                       <div className="flex items-center text-sm text-gray-500">

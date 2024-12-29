@@ -73,7 +73,7 @@ app.use('/api/images', (req, res, next) => {
   console.log('Full URL:', req.originalUrl);
   next();
 }, express.static(path.join(__dirname, 'public/images')));
-
+app.use('/uploads/profiles', express.static(path.join(__dirname, 'public/uploads/profiles')));
 // Pastikan folder ada
 const fs = require('fs');
 const paymentsDir = path.join(__dirname, 'public/images/payments');

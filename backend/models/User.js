@@ -26,6 +26,30 @@ const userSchema = new mongoose.Schema({
     required: [true, 'Name is required'],
     trim: true
   },
+  status: {
+    type: String,
+    enum: ['active', 'inactive', 'suspended'],
+    default: 'active'
+  },
+  lastLogin: {
+    type: Date,
+    default: null
+  },
+  statusHistory: [{
+    status: {
+      type: String,
+      enum: ['active', 'inactive', 'suspended']
+    },
+    changedBy: {
+      type: mongoose.Schema.ObjectId,
+      ref: 'User'
+    },
+    reason: String,
+    timestamp: {
+      type: Date,
+      default: Date.now
+    }
+  }],
   role: {
     type: String,
     enum: ['customer', 'admin'],
@@ -58,9 +82,15 @@ userSchema.pre('save', async function(next) {
     const salt = await bcrypt.genSalt(10);
     this.password = await bcrypt.hash(this.password, salt);
     next();
+
   } catch (error) {
     next(error);
   }
+  if (this.isNew && !this.avatar) {
+    const { generateAvatar } = require('../utils/helpers');
+    this.avatar = generateAvatar(this.name);
+  }
+  next();
 });
 
 // Method to check password

@@ -12,11 +12,18 @@ import {
   Camera,
   Edit
 } from 'lucide-react';
+import { userService } from '../../services/userService';
+import { toast } from 'react-hot-toast';
+// In Profile.js, add this import at the top
+import { generateDefaultAvatar } from '../../utils/avatarUtils';
 
 const Profile = () => {
   const [activeTab, setActiveTab] = useState('profile');
   const [isEditing, setIsEditing] = useState(false);
   const [user, setUser] = useState(null);
+  const [avatarLoading, setAvatarLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
+  // Add formData state
   const [formData, setFormData] = useState({
     name: '',
     email: '',
@@ -27,21 +34,61 @@ const Profile = () => {
   });
 
   useEffect(() => {
-    // Load user data from localStorage
-    const userData = localStorage.getItem('user');
-    if (userData) {
-      const parsedUser = JSON.parse(userData);
-      setUser(parsedUser);
-      setFormData({
-        name: parsedUser.name || '',
-        email: parsedUser.email || '',
-        phoneNumber: parsedUser.phoneNumber || '',
-        currentPassword: '',
-        newPassword: '',
-        confirmPassword: ''
-      });
-    }
+    const loadUserData = () => {
+      setLoading(true);
+      try {
+        const userData = localStorage.getItem('user');
+        if (userData) {
+          const parsedUser = JSON.parse(userData);
+          setUser(parsedUser);
+          setFormData({
+            name: parsedUser.name || '',
+            email: parsedUser.email || '',
+            phoneNumber: parsedUser.phoneNumber || '',
+            currentPassword: '',
+            newPassword: '',
+            confirmPassword: ''
+          });
+        }
+      } catch (error) {
+        console.error('Error loading user data:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadUserData();
   }, []);
+
+  // Replace the separate ProfileAvatar component with direct avatar rendering
+  const renderAvatar = () => {
+    if (avatarLoading) {
+      return (
+        <div className="h-24 w-24 rounded-full bg-gray-200 flex items-center justify-center">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600" />
+        </div>
+      );
+    }
+
+    const avatarSrc = user.avatar?.startsWith('data:') 
+      ? user.avatar 
+      : user.avatar 
+      ? `${process.env.REACT_APP_IMAGE_BASE_URL}/profiles/${user.avatar}`
+      : generateDefaultAvatar(user.name);
+
+    return (
+      <img
+        src={avatarSrc}
+        alt="Profile"
+        className="h-24 w-24 rounded-full object-cover"
+        onError={(e) => {
+          e.target.onerror = null;
+          e.target.src = generateDefaultAvatar(user.name);
+        }}
+      />
+    );
+  };
+
 
   const ProductImage = ({ image, name }) => {
     return (
@@ -57,6 +104,55 @@ const Profile = () => {
     );
   };
   
+
+// Then update the img tag:
+
+  const ProfileAvatar = ({ user, avatarLoading }) => {
+    if (avatarLoading) {
+      return (
+        <div className="h-24 w-24 rounded-full bg-gray-200 flex items-center justify-center">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600" />
+        </div>
+      );
+    }
+  
+    // If avatar is a data URL (SVG)
+    if (user.avatar?.startsWith('data:')) {
+      return (
+        <img
+          src={user.avatar}
+          alt="Profile"
+          className="h-24 w-24 rounded-full object-cover"
+        />
+      );
+    }
+  
+    // If avatar is an uploaded image
+    if (user.avatar) {
+      return (
+        <img
+          src={`${process.env.REACT_APP_API_URL}/uploads/profiles/${user.avatar}`}
+          alt="Profile"
+          className="h-24 w-24 rounded-full object-cover"
+          onError={(e) => {
+            e.target.onerror = null;
+            if (user.generatedAvatar) {
+              e.target.src = user.generatedAvatar;
+            } else {
+              e.target.src = `data:image/svg+xml,${encodeURIComponent(generateDefaultAvatar(user.name))}`;
+            }
+          }}
+        />
+      );
+    }
+  
+    // Default case - show user icon
+    return (
+      <div className="h-24 w-24 rounded-full bg-gray-200 flex items-center justify-center">
+        <User className="h-12 w-12 text-gray-400" />
+      </div>
+    );
+  };
   const ProfileOrders = () => {
     const [orders, setOrders] = useState([]);
     const [loading, setLoading] = useState(true);
@@ -175,6 +271,40 @@ const Profile = () => {
       [e.target.name]: e.target.value
     });
   };
+  const handleAvatarUpload = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+  
+    const formData = new FormData();
+    formData.append('avatar', file);
+  
+    setAvatarLoading(true);
+    try {
+      const result = await userService.updateAvatar(user._id, formData);
+      const updatedUser = { ...user, avatar: result.data.avatar };
+      localStorage.setItem('user', JSON.stringify(updatedUser));
+      setUser(updatedUser);
+      toast.success('Profile picture updated successfully');
+    } catch (error) {
+      console.error('Error uploading avatar:', error);
+      toast.error(error.message || 'Failed to upload profile picture');
+    } finally {
+      setAvatarLoading(false);
+    }
+  };
+  
+  const handleResetAvatar = async () => {
+    try {
+      const result = await userService.resetAvatar(user._id);
+      const updatedUser = { ...user, avatar: result.data.avatar };
+      localStorage.setItem('user', JSON.stringify(updatedUser));
+      setUser(updatedUser);
+      toast.success('Profile picture reset successfully');
+    } catch (error) {
+      console.error('Error resetting avatar:', error);
+      toast.error(error.message || 'Failed to reset profile picture');
+    }
+  };
 
   const handleUpdateProfile = async (e) => {
     e.preventDefault();
@@ -257,26 +387,65 @@ const Profile = () => {
             {/* Sidebar */}
             <div className="md:w-1/4 border-r border-gray-200">
               <div className="p-4">
-                <div className="text-center mb-6">
-                  <div className="relative inline-block">
-                    {user.avatar ? (
-                      <img
-                        src={user.avatar}
-                        alt="Profile"
-                        className="h-24 w-24 rounded-full object-cover"
-                      />
-                    ) : (
-                      <div className="h-24 w-24 rounded-full bg-gray-200 flex items-center justify-center">
-                        <User className="h-12 w-12 text-gray-400" />
-                      </div>
-                    )}
-                    <button className="absolute bottom-0 right-0 bg-white rounded-full p-2 shadow-sm border border-gray-200">
-                      <Camera className="h-4 w-4 text-gray-500" />
-                    </button>
-                  </div>
-                  <h2 className="mt-4 text-xl font-semibold text-gray-900">{user.name}</h2>
-                  <p className="text-sm text-gray-500">{user.email}</p>
-                </div>
+              <div className="text-center mb-6">
+              <div className="relative inline-block group">
+              {renderAvatar()}
+  {avatarLoading ? (
+    <div className="h-24 w-24 rounded-full bg-gray-200 flex items-center justify-center">
+      <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600" />
+    </div>
+  ) : user.avatar ? (
+    <img
+      src={`${process.env.REACT_APP_API_URL}/images/profiles/${user.avatar}`}
+      alt="Profile"
+      className="h-24 w-24 rounded-full object-cover"
+      onError={(e) => {
+        e.target.onerror = null;
+        e.target.src = `data:image/svg+xml,${encodeURIComponent(user.generatedAvatar || '')}`;
+      }}
+    />
+  ) : (
+    <div className="h-24 w-24 rounded-full bg-gray-200 flex items-center justify-center">
+      <User className="h-12 w-12 text-gray-400" />
+    </div>
+  )}
+  
+  <div className="absolute bottom-0 right-0 flex space-x-1">
+    <label className="cursor-pointer bg-white rounded-full p-2 shadow-sm border border-gray-200 hover:bg-gray-50">
+      <Camera className="h-4 w-4 text-gray-500" />
+      <input
+        type="file"
+        className="hidden"
+        accept="image/*"
+        onChange={handleAvatarUpload}
+      />
+    </label>
+    {user.avatar && (
+      <button
+        onClick={handleResetAvatar}
+        className="bg-white rounded-full p-2 shadow-sm border border-gray-200 hover:bg-gray-50"
+        title="Reset to default avatar"
+      >
+        <svg
+          className="h-4 w-4 text-gray-500"
+          fill="none"
+          viewBox="0 0 24 24"
+          stroke="currentColor"
+        >
+          <path
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            strokeWidth={2}
+            d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
+          />
+        </svg>
+      </button>
+    )}
+  </div>
+</div>
+  <h2 className="mt-4 text-xl font-semibold text-gray-900">{user.name}</h2>
+  <p className="text-sm text-gray-500">{user.email}</p>
+</div>
 
                 <nav className="space-y-1">
                   {tabs.map((tab) => {

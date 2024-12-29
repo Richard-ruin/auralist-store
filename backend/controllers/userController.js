@@ -2,7 +2,6 @@
 const User = require('../models/User');
 const catchAsync = require('../utils/catchAsync');
 const AppError = require('../utils/appError');
-
 exports.getAllUsers = catchAsync(async (req, res) => {
   const page = parseInt(req.query.page) || 1;
   const limit = parseInt(req.query.limit) || 10;
@@ -23,12 +22,18 @@ exports.getAllUsers = catchAsync(async (req, res) => {
     query.role = req.query.role;
   }
 
-  // Filter by status (active/inactive based on last login)
+  // Filter by status
   if (req.query.status) {
-    if (req.query.status === 'active') {
-      query.lastLogin = { $gte: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000) };
-    } else {
-      query.lastLogin = { $lt: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000) };
+    query.status = req.query.status;
+  }
+
+  // Filter by activity (based on last login)
+  if (req.query.activity) {
+    const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
+    if (req.query.activity === 'active') {
+      query.lastLogin = { $gte: thirtyDaysAgo };
+    } else if (req.query.activity === 'inactive') {
+      query.lastLogin = { $lt: thirtyDaysAgo };
     }
   }
 
@@ -49,6 +54,91 @@ exports.getAllUsers = catchAsync(async (req, res) => {
   });
 });
 
+exports.updateAvatar = catchAsync(async (req, res, next) => {
+  if (!req.file) {
+    return next(new AppError('Please upload an image', 400));
+  }
+
+  const user = await User.findById(req.params.id);
+  if (!user) {
+    return next(new AppError('No user found with that ID', 404));
+  }
+
+  user.avatar = req.file.filename; // Just store the filename
+  await user.save();
+
+  res.status(200).json({
+    status: 'success',
+    data: {
+      avatar: user.avatar
+    }
+  });
+});
+exports.updateUserStatus = catchAsync(async (req, res, next) => {
+  const { status, reason } = req.body;
+  
+  const user = await User.findById(req.params.id);
+  if (!user) {
+    return next(new AppError('No user found with that ID', 404));
+  }
+
+  // Add to status history
+  user.statusHistory.push({
+    status,
+    changedBy: req.user._id,
+    reason,
+    timestamp: new Date()
+  });
+
+  // Update current status
+  user.status = status;
+  await user.save();
+
+  res.status(200).json({
+    status: 'success',
+    data: {
+      user
+    }
+  });
+});
+
+exports.getUserStatusHistory = catchAsync(async (req, res, next) => {
+  const user = await User.findById(req.params.id)
+    .populate({
+      path: 'statusHistory.changedBy',
+      select: 'name email'
+    });
+
+  if (!user) {
+    return next(new AppError('No user found with that ID', 404));
+  }
+
+  res.status(200).json({
+    status: 'success',
+    data: {
+      statusHistory: user.statusHistory
+    }
+  });
+});
+
+exports.resetToGeneratedAvatar = catchAsync(async (req, res, next) => {
+  const user = await User.findById(req.params.id);
+  if (!user) {
+    return next(new AppError('No user found with that ID', 404));
+  }
+
+  const { generateAvatar } = require('../utils/helpers');
+  const generatedAvatar = generateAvatar(user.name);
+  user.avatar = generatedAvatar; // Store the complete data URL
+  await user.save();
+
+  res.status(200).json({
+    status: 'success',
+    data: {
+      avatar: user.avatar
+    }
+  });
+});
 exports.getUser = catchAsync(async (req, res, next) => {
   const user = await User.findById(req.params.id).select('-password');
   
