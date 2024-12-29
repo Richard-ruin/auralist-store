@@ -194,7 +194,8 @@ exports.getProduct = async (req, res) => {
     const product = await Product.findById(req.params.id)
       .populate('brand')
       .populate('category')
-      .populate('createdBy', 'name');
+      .populate('createdBy', 'name')
+      .populate('specifications.specification'); // Menambahkan ini
 
     if (!product) {
       return res.status(404).json({
