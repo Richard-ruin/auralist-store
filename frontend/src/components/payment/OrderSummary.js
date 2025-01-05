@@ -1,12 +1,11 @@
 import React from 'react';
 import { useParams } from 'react-router-dom';
+import { ImageIcon } from 'lucide-react';
 
 const OrderSummary = ({ orderData }) => {
   const { orderId } = useParams();
   
   if (!orderData) return null;
-
-  console.log('OrderSummary received data:', orderData); // Debug log
 
   const formatCurrency = (amount, curr = 'USD') => {
     try {
@@ -23,7 +22,7 @@ const OrderSummary = ({ orderData }) => {
   const getImageUrl = (image) => {
     if (!image) return '/api/placeholder/400/320';
     if (image.startsWith('http')) return image;
-    return `${process.env.REACT_APP_API_URL}/images/products/${image}`;
+    return `${process.env.REACT_APP_API_URL}/api/images/products/${image}`;
   };
 
   return (
@@ -38,34 +37,32 @@ const OrderSummary = ({ orderData }) => {
 
       {/* Items List */}
       <div className="p-6 space-y-4">
-        {orderData.items?.map((item, index) => {
-          console.log('Processing item:', item); // Debug log
-          return (
-            <div key={index} className="flex space-x-4">
-              <div className="flex-shrink-0 w-20 h-20">
-                <img
-                  src={getImageUrl(item.product?.mainImage || item.image)}
-                  alt={item.product?.name || item.name || 'Product'}
-                  className="w-full h-full object-cover rounded-md"
-                  onError={(e) => {
-                    e.target.src = '/api/placeholder/400/320';
-                  }}
-                />
-              </div>
-              <div className="flex-1 min-w-0">
-                <h4 className="text-sm font-medium text-gray-900 truncate">
-                  {item.product?.name || item.name || 'Product Name'}
-                </h4>
-                <p className="mt-1 text-sm text-gray-500">
-                  Qty: {item.quantity}
-                </p>
-                <p className="mt-1 text-sm text-gray-700">
-                  {formatCurrency(item.price * item.quantity)}
-                </p>
-              </div>
+        {orderData.items?.map((item, index) => (
+          <div key={index} className="flex space-x-4">
+            <div className="flex-shrink-0 w-20 h-20">
+              <img
+                src={getImageUrl(item.product?.mainImage)}
+                alt={item.product?.name || item.name || 'Product'}
+                className="w-full h-full object-cover rounded-md"
+                onError={(e) => {
+                  e.target.onerror = null;
+                  e.target.src = '/api/placeholder/400/320';
+                }}
+              />
             </div>
-          );
-        })}
+            <div className="flex-1 min-w-0">
+              <h4 className="text-sm font-medium text-gray-900 truncate">
+                {item.product?.name || item.name || 'Product Name'}
+              </h4>
+              <p className="mt-1 text-sm text-gray-500">
+                Qty: {item.quantity}
+              </p>
+              <p className="mt-1 text-sm text-gray-700">
+                {formatCurrency(item.price * item.quantity)}
+              </p>
+            </div>
+          </div>
+        ))}
       </div>
 
       {/* Price Breakdown */}

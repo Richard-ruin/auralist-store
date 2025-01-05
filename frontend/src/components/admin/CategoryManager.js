@@ -14,6 +14,7 @@ import { categoryService } from '../../services/categoryService';
 import CategoryModal from './CategoryModal';
 import CategorySpecificationModal from './CategorySpecificationModal';
 import { toast } from 'react-hot-toast';
+import ItemCard from './itemcard';
 
 const CategoryManager = () => {
   const [categories, setCategories] = useState([]);
@@ -157,73 +158,24 @@ const CategoryManager = () => {
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {filteredCategories.map((category) => (
-            <div
+            <ItemCard
               key={category._id}
-              className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden"
-            >
-              <div className="relative aspect-w-16 aspect-h-9 bg-gray-200">
-                {category.image ? (
-                  <img
-                    src={`${process.env.REACT_APP_API_URL}/images/categories/${category.image}`}
-                    alt={category.name}
-                    className="object-cover w-full h-full"
-                    onError={(e) => {
-                      e.target.onerror = null;
-                      e.target.src = 'https://via.placeholder.com/300x200?text=No+Image';
-                    }}
-                  />
-                ) : (
-                  <div className="flex items-center justify-center w-full h-full">
-                    <ImageIcon className="w-12 h-12 text-gray-400" />
-                  </div>
-                )}
-              </div>
-              <div className="p-4">
-                <div className="flex items-center justify-between">
-                  <h3 className="text-lg font-semibold text-gray-900">
-                    {category.name}
-                  </h3>
-                  <span className={`px-2 py-1 text-xs font-semibold rounded-full ${getStatusColor(category.status)}`}>
-                    {category.status}
-                  </span>
-                </div>
-                <p className="mt-1 text-sm text-gray-500">{category.description}</p>
-                <div className="mt-4 flex items-center justify-between">
-                  <span className="text-sm text-gray-500">
-                    {category.productCount || 0} products
-                  </span>
-                  <div className="flex items-center space-x-2">
-                    <button
-                      onClick={() => {
-                        setSelectedCategory(category);
-                        setShowModal(true);
-                      }}
-                      className="p-1 text-indigo-600 hover:text-indigo-900 rounded-full hover:bg-gray-100"
-                      title="Edit Category"
-                    >
-                      <Edit className="w-5 h-5" />
-                    </button>
-                    <button
-                      onClick={() => {
-                        setSelectedCategory(category);
-                        setShowSpecModal(true);
-                      }}
-                      className="p-1 text-blue-600 hover:text-blue-900 rounded-full hover:bg-gray-100"
-                      title="Manage Specifications"
-                    >
-                      <Settings className="w-5 h-5" />
-                    </button>
-                    <button
-                      onClick={() => handleDelete(category._id)}
-                      className="p-1 text-red-600 hover:text-red-900 rounded-full hover:bg-gray-100"
-                      title="Delete Category"
-                    >
-                      <Trash2 className="w-5 h-5" />
-                    </button>
-                  </div>
-                </div>
-              </div>
-            </div>
+              image={category.image ? `${process.env.REACT_APP_API_URL}/images/categories/${category.image}` : null}
+              name={category.name}
+              status={category.status}
+              description={category.description}
+              itemCount={category.productCount || 0}
+              type="category"
+              onEdit={() => {
+                setSelectedCategory(category);
+                setShowModal(true);
+              }}
+              onSettings={() => {
+                setSelectedCategory(category);
+                setShowSpecModal(true);
+              }}
+              onDelete={() => handleDelete(category._id)}
+            />
           ))}
         </div>
       )}
