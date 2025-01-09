@@ -46,6 +46,15 @@ const productSchema = new mongoose.Schema({
       message: 'Stock must be a whole number'
     }
   },
+  // In models/Product.js, add to schema
+averageRating: {
+  type: Number,
+  default: 0
+},
+totalReviews: {
+  type: Number,
+  default: 0
+},
   status: {
     type: String,
     enum: ['In Stock', 'Low Stock', 'Out of Stock'],

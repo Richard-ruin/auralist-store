@@ -26,7 +26,8 @@ import MainLayout from './components/layout/MainLayout';
 import AuthLayout from './components/layout/AuthLayout';
 import ProtectedRoute from './components/auth/ProtectedRoute';
 
-// provider
+// Providers
+import { AuthProvider } from './context/AuthContext';
 import { CategoryProvider } from './context/CategoryContext';
 import { BrandProvider } from './context/BrandContext';
 import { ProductProvider } from './context/ProductContext';
@@ -38,78 +39,80 @@ import { CartProvider } from './context/CartContext';
 
 const App = () => {
   return (
-    <Router>
-      <CategoryProvider>
-        <BrandProvider>
-        <ProductProvider>
-          <UserProvider>
-            <PaymentProvider>
-              <OrderProvider>
-                <WishlistProvider>
-                  <CartProvider>
-      <Routes>
-        {/* Auth Routes */}
-        <Route path="/login" element={
-          <AuthLayout>
-            <Login />
-          </AuthLayout>
-        } />
-        <Route path="/register" element={
-          <AuthLayout>
-            <Register />
-          </AuthLayout>
-        } />
-        <Route path="/forgot-password" element={
-          <AuthLayout>
-            <ForgotPassword />
-          </AuthLayout>
-        } />
-        <Route path="/reset-password/:token" element={
-          <AuthLayout>
-            <ResetPassword />
-          </AuthLayout>
-        } />
+    <AuthProvider>
+      <Router>
+        <CategoryProvider>
+          <BrandProvider>
+            <ProductProvider>
+              <UserProvider>
+                <PaymentProvider>
+                  <OrderProvider>
+                    <WishlistProvider>
+                      <CartProvider>
+                        <Routes>
+                          {/* Auth Routes */}
+                          <Route path="/login" element={
+                            <AuthLayout>
+                              <Login />
+                            </AuthLayout>
+                          } />
+                          <Route path="/register" element={
+                            <AuthLayout>
+                              <Register />
+                            </AuthLayout>
+                          } />
+                          <Route path="/forgot-password" element={
+                            <AuthLayout>
+                              <ForgotPassword />
+                            </AuthLayout>
+                          } />
+                          <Route path="/reset-password/:token" element={
+                            <AuthLayout>
+                              <ResetPassword />
+                            </AuthLayout>
+                          } />
 
-        {/* Admin Routes */}
-        <Route path="/admin/*" element={
-          <ProtectedRoute allowedRoles={['admin']}>
-            <AdminRoutes />
-          </ProtectedRoute>
-        } />
+                          {/* Admin Routes */}
+                          <Route path="/admin/*" element={
+                            <ProtectedRoute allowedRoles={['admin']}>
+                              <AdminRoutes />
+                            </ProtectedRoute>
+                          } />
 
-        {/* Public Routes */}
-<Route element={<MainLayout />}>
-  <Route index element={<HomePage />} />
-  <Route path="/shop" element={<ShopPage />} />
-  <Route path="/product/:id" element={<ProductDetail />} />
-  <Route path="/categories" element={<CategoriesPage />} />
-  <Route path="/brands" element={<BrandsPage />} />
-  <Route path="/about" element={<AboutPage />} />
-  <Route path="/contact" element={<ContactPage />} />
-  <Route path="/search" element={<ShopPage />} />
-  <Route path="/brands/:brandSlug" element={<ShopPage />} />
-  <Route path="/categories/:categorySlug" element={<ShopPage />} />
-  
-  {/* User Protected Routes */}
-  <Route path="/user/*" element={
-    <ProtectedRoute allowedRoles={['customer']}>
-      <UserRoutes />
-    </ProtectedRoute>
-  } />
-</Route>
+                          {/* Public Routes */}
+                          <Route element={<MainLayout />}>
+                            <Route index element={<HomePage />} />
+                            <Route path="/shop" element={<ShopPage />} />
+                            <Route path="/product/:id" element={<ProductDetail />} />
+                            <Route path="/categories" element={<CategoriesPage />} />
+                            <Route path="/brands" element={<BrandsPage />} />
+                            <Route path="/about" element={<AboutPage />} />
+                            <Route path="/contact" element={<ContactPage />} />
+                            <Route path="/search" element={<ShopPage />} />
+                            <Route path="/brands/:brandSlug" element={<ShopPage />} />
+                            <Route path="/categories/:categorySlug" element={<ShopPage />} />
+                            
+                            {/* User Protected Routes */}
+                            <Route path="/user/*" element={
+                              <ProtectedRoute allowedRoles={['customer']}>
+                                <UserRoutes />
+                              </ProtectedRoute>
+                            } />
+                          </Route>
 
-        {/* 404 Route */}
-        <Route path="*" element={<NotFoundPage />} />
-      </Routes>
-      </CartProvider>
-      </WishlistProvider>
-      </OrderProvider>
-      </PaymentProvider>
-      </UserProvider>
-      </ProductProvider>
-      </BrandProvider>
-      </CategoryProvider>
-    </Router>
+                          {/* 404 Route */}
+                          <Route path="*" element={<NotFoundPage />} />
+                        </Routes>
+                      </CartProvider>
+                    </WishlistProvider>
+                  </OrderProvider>
+                </PaymentProvider>
+              </UserProvider>
+            </ProductProvider>
+          </BrandProvider>
+        </CategoryProvider>
+      </Router>
+    </AuthProvider>
   );
 };
 

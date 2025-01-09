@@ -82,5 +82,7 @@ const Order = mongoose.model('Order', orderSchema);
 orderSchema.index({ createdAt: -1 });
 orderSchema.index({ status: 1 });
 orderSchema.index({ paymentStatus: 1 });
+// models/Order.js
+orderSchema.index({ user: 1, 'items.product': 1, status: 1 });
 
 module.exports = Order;

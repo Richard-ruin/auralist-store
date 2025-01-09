@@ -1,4 +1,3 @@
-// src/components/product/ProductCard.js
 import React from 'react';
 import { Heart, ShoppingCart, ImageIcon } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
@@ -6,13 +5,13 @@ import { toast } from 'react-hot-toast';
 import { useCart } from '../../hooks/useCart';
 import { useWishlist } from '../../hooks/useWishlist';
 import { Button } from '../ui/button';
+import StarRating from '../ui/StarRating';
 
 const ProductCard = ({ product }) => {
   const navigate = useNavigate();
   const { addToCart } = useCart();
   const { wishlistItems = [], addToWishlist, removeFromWishlist } = useWishlist();
 
-  // Pastikan wishlistItems adalah array sebelum menggunakan some
   const isProductInWishlist = Array.isArray(wishlistItems) ? 
     wishlistItems.some(item => (item.id === product._id || item._id === product._id)) : false;
 
@@ -70,6 +69,7 @@ const ProductCard = ({ product }) => {
       }
     }
   };
+
   const formatPrice = (price) => {
     return new Intl.NumberFormat('en-US', {
       style: 'currency',
@@ -149,6 +149,14 @@ const ProductCard = ({ product }) => {
           Category: {product.category?.name}
         </p>
 
+        {/* Rating Section - Replacing Specifications */}
+        <div className="flex items-center space-x-2 mb-3">
+          <StarRating rating={product.averageRating || 0} size="sm" />
+          <span className="text-sm text-gray-500">
+            ({product.totalReviews || 0} reviews)
+          </span>
+        </div>
+
         {/* Price and Action Section */}
         <div className="flex justify-between items-center">
           <div>
@@ -163,34 +171,19 @@ const ProductCard = ({ product }) => {
           </div>
 
           <button
-      onClick={handleAddToCart}
-      disabled={product.stock === 0}
-      className={`p-2 rounded-full ${
-        product.stock === 0
-          ? 'bg-gray-100 cursor-not-allowed'
-          : 'bg-indigo-50 hover:bg-indigo-100'
-      } transition-colors`}
-    >
-      <ShoppingCart className={`w-5 h-5 ${
-        product.stock === 0 ? 'text-gray-400' : 'text-indigo-600'
-      }`} />
-    </button>
+            onClick={handleAddToCart}
+            disabled={product.stock === 0}
+            className={`p-2 rounded-full ${
+              product.stock === 0
+                ? 'bg-gray-100 cursor-not-allowed'
+                : 'bg-indigo-50 hover:bg-indigo-100'
+            } transition-colors`}
+          >
+            <ShoppingCart className={`w-5 h-5 ${
+              product.stock === 0 ? 'text-gray-400' : 'text-indigo-600'
+            }`} />
+          </button>
         </div>
-
-        {/* Specs Preview */}
-        {product.specifications?.length > 0 && (
-          <div className="mt-3 border-t pt-3">
-            <div className="grid grid-cols-2 gap-2">
-              {product.specifications.slice(0, 2).map((spec) => (
-                <div key={spec.specification._id} className="text-xs text-gray-600">
-                  <span className="font-medium">{spec.specification.displayName}:</span>{' '}
-                  {spec.value}
-                  {spec.specification.unit && ` ${spec.specification.unit}`}
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
       </div>
     </div>
   );
