@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "dependencies": {
-    "@headlessui/react": "^2.2.0",
+    "@headlessui/react": "^1.7.19",
     "@heroicons/react": "^2.1.5",
     "@radix-ui/react-slot": "^1.1.1",
     "@testing-library/jest-dom": "^5.16.5",
@@ -13,7 +13,7 @@
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "date-fns": "^4.1.0",
-    "lucide-react": "^0.460.0",
+    "lucide-react": "^0.263.1",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
     "react-hot-toast": "^2.4.1",
@@ -21,6 +21,7 @@
     "react-scripts": "^5.0.1",
     "react-toastify": "^10.0.6",
     "recharts": "^2.13.3",
+    "socket.io-client": "^4.8.1",
     "tailwind-merge": "^2.5.5",
     "toast": "^0.5.4",
     "web-vitals": "^2.1.4"

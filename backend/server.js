@@ -20,6 +20,8 @@ const addressRoutes = require('./routes/address');
 const wishlistRoutes = require('./routes/wishlist');
 const cartRoutes = require('./routes/cart');
 const reviewRoutes = require('./routes/reviews');
+const chatRoutes = require('./routes/chat');
+const chatBotRoutes = require('./routes/chatBot');
 
 // Import error handler
 const errorHandler = require('./middleware/errorHandler');
@@ -30,7 +32,8 @@ const corsOptions = {
   credentials: true,
   optionsSuccessStatus: 200
 };
-
+const chatBotController = require('./controllers/chatBotController');
+chatBotController.initializeDefaultResponses();
 // Create necessary directories
 const createRequiredDirectories = () => {
   const directories = [
@@ -112,6 +115,8 @@ app.use('/api/addresses', addressRoutes);
 app.use('/api/wishlist', wishlistRoutes);
 app.use('/api/cart', cartRoutes);
 app.use('/api/reviews', reviewRoutes);
+app.use('/api/chat', chatRoutes);
+app.use('/api/chatbot', chatBotRoutes);
 
 // Error handling
 app.use(errorHandler);

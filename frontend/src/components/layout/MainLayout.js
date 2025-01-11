@@ -1,7 +1,9 @@
+// frontend/src/components/layout/MainLayout.js
 import React from 'react';
 import { Outlet } from 'react-router-dom';
 import Header from '../common/Header';
 import Footer from '../common/Footer';
+import ChatIconFooter from '../common/ChatIconFooter';
 
 const MainLayout = () => {
   return (
@@ -11,6 +13,7 @@ const MainLayout = () => {
         <Outlet />
       </main>
       <Footer />
+      <ChatIconFooter />
     </div>
   );
 };
