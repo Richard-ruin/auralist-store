@@ -1,7 +1,8 @@
 // frontend/src/components/common/ChatIconFooter.js
 import React, { useState } from 'react';
-import { MessageCircle, Users, Bot, X } from 'lucide-react';
+import { MessageCircle, Users, Bot } from 'lucide-react';
 import CommunityChat from '../chat/CommunityChat';
+import BotAdminChat from '../chat/BotAdminChat';
 
 const ChatIconFooter = () => {
   const [showCommunity, setShowCommunity] = useState(false);
@@ -35,20 +36,18 @@ const ChatIconFooter = () => {
               {chatType === 'bot' ? 'Chat Bot' : 'Admin Support'}
             </span>
           </button>
-
-          {showBotAdmin && (
-            // Bot & Admin Chat component will be implemented next
-            <div className="absolute bottom-16 right-0 w-96 bg-white rounded-lg shadow-xl border">
-              {/* Content */}
-            </div>
-          )}
         </div>
       </div>
 
-      {/* Community Chat Component */}
+      {/* Chat Components */}
       <CommunityChat 
         isOpen={showCommunity} 
         onClose={() => setShowCommunity(false)} 
+      />
+      <BotAdminChat 
+        isOpen={showBotAdmin}
+        onClose={() => setShowBotAdmin(false)}
+        initialType={chatType}
       />
     </>
   );
