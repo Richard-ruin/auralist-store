@@ -3,33 +3,41 @@ const Order = require('../models/Order');
 const catchAsync = require('../utils/catchAsync');
 const AppError = require('../utils/appError');
 
+// Di reviewController.js, perbaiki createReview:
 exports.createReview = catchAsync(async (req, res, next) => {
-  // Cari order yang delivered dengan product ini
+  const productId = req.body.product; // Ubah dari productId ke product
+
+  // Cek order yang delivered dengan product ini
   const order = await Order.findOne({
     user: req.user.id,
     status: 'delivered',
-    'items.product': req.body.productId
+    'items.product': productId // Perbaiki query untuk mencari product di items
   });
+
+  console.log('Found order:', order);
 
   if (!order) {
     return next(new AppError('You can only review products from delivered orders', 400));
   }
 
-  // Check if user already reviewed this product
+  // Cek jika user sudah review product ini
   const existingReview = await Review.findOne({
     user: req.user.id,
-    product: req.body.productId
+    product: productId
   });
 
   if (existingReview) {
     return next(new AppError('You have already reviewed this product', 400));
   }
 
-  // Create review with uploaded image paths
+  // Buat review dengan uploaded image paths
   const reviewData = {
-    ...req.body,
     user: req.user.id,
-    order: order._id, // Add order reference
+    product: productId,
+    order: order._id,
+    rating: req.body.rating,
+    title: req.body.title,
+    comment: req.body.comment,
     images: req.files ? req.files.map(file => file.filename) : []
   };
 
@@ -95,6 +103,7 @@ exports.checkCanReview = catchAsync(async (req, res, next) => {
     }
   });
 });
+// Di reviewController.js, update getAllReviews
 exports.getAllReviews = catchAsync(async (req, res, next) => {
   const page = parseInt(req.query.page, 10) || 1;
   const limit = parseInt(req.query.limit, 10) || 10;
@@ -103,13 +112,16 @@ exports.getAllReviews = catchAsync(async (req, res, next) => {
   // Build query
   let query = Review.find({ product: req.query.productId })
     .populate('user', 'name avatar')
-    .sort('-likesCount -createdAt') // Sort by likes count and date
-    .skip(skip)
-    .limit(limit);
+    .sort('-createdAt');
 
   // Execute query
   const reviews = await query;
   const total = await Review.countDocuments({ product: req.query.productId });
+
+  // Calculate average rating
+  const averageRating = reviews.length > 0
+    ? reviews.reduce((sum, review) => sum + review.rating, 0) / reviews.length
+    : 0;
 
   res.status(200).json({
     status: 'success',
@@ -118,7 +130,9 @@ exports.getAllReviews = catchAsync(async (req, res, next) => {
     totalPages: Math.ceil(total / limit),
     currentPage: page,
     data: {
-      reviews
+      reviews,
+      averageRating: Number(averageRating.toFixed(1)),
+      totalReviews: total
     }
   });
 });

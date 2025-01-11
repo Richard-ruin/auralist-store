@@ -1,9 +1,11 @@
 import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { Eye, EyeOff } from 'lucide-react';
+import { useAuth } from '../../context/AuthContext';
 
 const Login = () => {
   const navigate = useNavigate();
+  const { login } = useAuth();
   const [formData, setFormData] = useState({
     email: '',
     password: ''
@@ -39,15 +41,14 @@ const Login = () => {
         throw new Error(data.message || 'Login failed');
       }
 
-      // Save token and user data to localStorage
-      localStorage.setItem('token', data.token);
-      localStorage.setItem('user', JSON.stringify(data.data.user));
+      // Use the login function from AuthContext
+      await login(data.data.user, data.token);
 
       // Redirect based on user role
       if (data.data.user.role === 'admin') {
         navigate('/admin/dashboard');
       } else {
-        navigate('/user/profile'); // Redirect customer to their profile page
+        navigate('/user/profile');
       }
     } catch (err) {
       setError(err.message);

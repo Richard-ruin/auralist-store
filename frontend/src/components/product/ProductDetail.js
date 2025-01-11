@@ -22,6 +22,8 @@ import ProductReviews from './ProductReviews';
 import StarRating from '../ui/StarRating';
 import { useAuth } from '../../hooks/useAuth';
 import reviewService from '../../services/reviewService';
+import ReviewModal from './ReviewModal'; 
+
 
 const ProductDetail = () => {
   const { id } = useParams();
@@ -37,6 +39,7 @@ const ProductDetail = () => {
   const { user, isAuthenticated } = useAuth();
   const [canReview, setCanReview] = useState(false);
   const [showReviewModal, setShowReviewModal] = useState(false);
+const [editingReview, setEditingReview] = useState(null);
 
   useEffect(() => {
     const fetchProduct = async () => {
@@ -62,6 +65,24 @@ const ProductDetail = () => {
     });
   }, [user, isAuthenticated]);
 
+  useEffect(() => {
+    const updateProductRating = async () => {
+      if (product?._id) {
+        try {
+          const ratingData = await reviewService.getProductRating(product._id);
+          setProduct(prev => ({
+            ...prev,
+            averageRating: ratingData.averageRating,
+            totalReviews: ratingData.totalReviews
+          }));
+        } catch (error) {
+          console.error('Error updating product rating:', error);
+        }
+      }
+    };
+  
+    updateProductRating();
+  }, [product?._id]);
   useEffect(() => {
     const checkCanReview = async () => {
       try {
@@ -481,11 +502,14 @@ const ProductDetail = () => {
       </div>
 
       {/* Reviews Section */}
-      <div className="mt-16 border-t pt-8">
+<div className="mt-16 border-t pt-8">
   {canReview && (
     <div className="mb-4">
       <button
-        onClick={() => setShowReviewModal(true)}
+        onClick={() => {
+          setShowReviewModal(true);
+          setEditingReview(null);
+        }}
         className="bg-indigo-600 text-white px-6 py-2 rounded-md hover:bg-indigo-700
           flex items-center justify-center"
       >
@@ -496,11 +520,49 @@ const ProductDetail = () => {
   )}
 
   <ProductReviews 
-    productId={product._id} 
+    productId={product._id}
     productName={product.name}
     canReview={canReview}
     showReviewModal={showReviewModal}
     setShowReviewModal={setShowReviewModal}
+    setEditingReview={setEditingReview}
+  />
+
+  <ReviewModal 
+    isOpen={showReviewModal}
+    onClose={() => {
+      setShowReviewModal(false);
+      setEditingReview(null);
+    }}
+    productId={product._id}
+    productName={product.name}
+    editingReview={editingReview}
+    onSubmit={async (formData) => {
+      try {
+        if (editingReview) {
+          await reviewService.updateReview(editingReview._id, formData);
+          toast.success('Review updated successfully');
+        } else {
+          const response = await reviewService.createReview(formData);
+          if (response.status === 'success') {
+            toast.success('Review submitted successfully');
+          } else {
+            throw new Error(response.message || 'Failed to submit review');
+          }
+        }
+        setShowReviewModal(false);
+        // Refresh product data to get updated reviews
+        const response = await api.get(`/products/${product._id}`);
+        setProduct(response.data.data);
+      } catch (error) {
+        console.error('Review submission error:', error);
+        toast.error(
+          error.response?.data?.message || 
+          error.message || 
+          'Failed to submit review'
+        );
+      }
+    }}
   />
 </div>
 
