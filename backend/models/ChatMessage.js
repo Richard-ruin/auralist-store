@@ -1,18 +1,19 @@
+// Modified models/ChatMessage.js
 const mongoose = require('mongoose');
 
 const chatMessageSchema = new mongoose.Schema({
   sender: {
     type: mongoose.Schema.ObjectId,
-    ref: 'User',
-    required: true
-  },
-  receiver: {
-    type: mongoose.Schema.ObjectId,
     ref: 'User'
+  },
+  roomId: {
+    type: mongoose.Schema.ObjectId,
+    ref: 'ChatRoom',
+    required: true
   },
   messageType: {
     type: String,
-    enum: ['user', 'admin', 'bot', 'community'],
+    enum: ['direct', 'community', 'bot', 'admin'],
     required: true
   },
   content: {
@@ -20,14 +21,9 @@ const chatMessageSchema = new mongoose.Schema({
     required: true
   },
   attachments: [{
-    type: String, // URL atau path ke file
+    type: String,
     optional: true
   }],
-  roomId: {
-    type: mongoose.Schema.ObjectId,
-    ref: 'ChatRoom',
-    required: true
-  },
   readBy: [{
     user: {
       type: mongoose.Schema.ObjectId,

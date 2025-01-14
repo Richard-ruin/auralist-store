@@ -20,6 +20,7 @@ const AdminLayout = () => {
     { title: 'Orders', icon: <ShoppingCart size={20} />, path: '/admin/orders' },
     { title: 'Users', icon: <Users size={20} />, path: '/admin/users' },
     { title: 'Analytics', icon: <BarChart3 size={20} />, path: '/admin/analytics' },
+    { title: 'Community Channels', icon: <ChevronRight size={20} />, path: '/admin/community-channels' },
     { title: 'Settings', icon: <Settings size={20} />, path: '/admin/settings' }
   ];
 

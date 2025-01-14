@@ -37,6 +37,8 @@ import { OrderProvider } from './context/OrderContext';
 import { WishlistProvider } from './context/WishlistContext';
 import { CartProvider } from './context/CartContext';
 
+import { ChatProvider } from './context/ChatContext';
+
 const App = () => {
   return (
     <AuthProvider>
@@ -49,6 +51,7 @@ const App = () => {
                   <OrderProvider>
                     <WishlistProvider>
                       <CartProvider>
+                          <ChatProvider>
                         <Routes>
                           {/* Auth Routes */}
                           <Route path="/login" element={
@@ -99,10 +102,11 @@ const App = () => {
                               </ProtectedRoute>
                             } />
                           </Route>
-
                           {/* 404 Route */}
                           <Route path="*" element={<NotFoundPage />} />
                         </Routes>
+                          </ChatProvider>
+ 
                       </CartProvider>
                     </WishlistProvider>
                   </OrderProvider>

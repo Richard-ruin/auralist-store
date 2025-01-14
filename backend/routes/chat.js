@@ -1,23 +1,20 @@
+// routes/chat.js
 const express = require('express');
 const router = express.Router();
 const chatController = require('../controllers/chatController');
 const { protect } = require('../middleware/auth');
-const uploadChat = require('../middleware/uploadChat');
+const upload = require('../middleware/uploadChat');
 
-// Protect all chat routes
 router.use(protect);
 
-// Chat rooms
+// Chat room routes
 router.get('/rooms', chatController.getChatRooms);
 router.post('/rooms', chatController.createChatRoom);
 
-// Messages
+// Message routes - Unified message handling for both rooms and channels
 router.get('/rooms/:roomId/messages', chatController.getChatMessages);
-router.post(
-  '/rooms/:roomId/messages',
-  uploadChat.array('attachments', 5),
-  chatController.sendMessage
-);
+router.post('/rooms/:roomId/messages', chatController.sendMessage);
+router.post('/channels/:channelId/messages', chatController.sendChannelMessage); // Separate handler for channel messages
 router.post('/rooms/:roomId/read', chatController.markMessagesAsRead);
 
 module.exports = router;

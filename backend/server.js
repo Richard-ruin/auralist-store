@@ -1,9 +1,12 @@
+// backend/server.js
 const express = require('express');
 const mongoose = require('mongoose');
 const cors = require('cors');
 const morgan = require('morgan');
 const path = require('path');
 const fs = require('fs');
+const http = require('http'); // Tambahkan ini
+const socketIO = require('socket.io'); // Tambahkan ini
 const nodemailer = require('nodemailer');
 require('dotenv').config();
 
@@ -22,6 +25,7 @@ const cartRoutes = require('./routes/cart');
 const reviewRoutes = require('./routes/reviews');
 const chatRoutes = require('./routes/chat');
 const chatBotRoutes = require('./routes/chatBot');
+const communityChannelRoutes = require('./routes/communityChannels');
 
 // Import error handler
 const errorHandler = require('./middleware/errorHandler');
@@ -75,7 +79,15 @@ const verifyEmailConfig = async () => {
 
 // Create Express app
 const app = express();
+const server = http.createServer(app);
 
+const io = socketIO(server, {
+  cors: {
+    origin: process.env.FRONTEND_URL || 'http://localhost:3000',
+    methods: ["GET", "POST"],
+    credentials: true
+  }
+});
 // Create required directories
 createRequiredDirectories();
 
@@ -99,6 +111,62 @@ app.use('/api/images', (req, res, next) => {
 }, express.static(path.join(__dirname, 'public/images')));
 app.use('/uploads/profiles', express.static(path.join(__dirname, 'public/uploads/profiles')));
 
+
+// Socket.IO Authentication Middleware
+io.use(async (socket, next) => {
+  try {
+    const token = socket.handshake.auth.token;
+    if (!token) {
+      return next(new Error('Authentication error'));
+    }
+
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    const user = await User.findById(decoded.id);
+    
+    if (!user) {
+      return next(new Error('User not found'));
+    }
+
+    socket.user = user;
+    next();
+  } catch (error) {
+    next(new Error('Authentication error'));
+  }
+});
+
+// Socket.IO Connection Handler
+io.on('connection', (socket) => {
+  console.log('User connected:', socket.user?.name);
+
+  // Join personal room
+  if (socket.user) {
+    socket.join(`user:${socket.user._id}`);
+  }
+
+  // Handle joining community channel
+  socket.on('joinChannel', (channelId) => {
+    socket.join(`channel:${channelId}`);
+    console.log(`User ${socket.user?.name} joined channel ${channelId}`);
+  });
+
+  // Handle leaving community channel
+  socket.on('leaveChannel', (channelId) => {
+    socket.leave(`channel:${channelId}`);
+    console.log(`User ${socket.user?.name} left channel ${channelId}`);
+  });
+
+  // Handle community messages
+  socket.on('communityMessage', async ({ channelId, message }) => {
+    console.log(`New message in channel ${channelId}:`, message);
+    io.to(`channel:${channelId}`).emit('newMessage', message);
+  });
+
+  // Handle disconnect
+  socket.on('disconnect', () => {
+    console.log('User disconnected:', socket.user?.name);
+  });
+});
+
 // Verify email configuration
 verifyEmailConfig();
 
@@ -117,6 +185,8 @@ app.use('/api/cart', cartRoutes);
 app.use('/api/reviews', reviewRoutes);
 app.use('/api/chat', chatRoutes);
 app.use('/api/chatbot', chatBotRoutes);
+app.use('/api/community/channels', communityChannelRoutes);
+app.set('io', io);
 
 // Error handling
 app.use(errorHandler);
@@ -150,6 +220,6 @@ app.use('*', (req, res) => {
 
 // Start server
 const PORT = process.env.PORT || 5000;
-app.listen(PORT, () => {
+server.listen(PORT, () => {
   console.log(`Server is running on port ${PORT}`);
 });

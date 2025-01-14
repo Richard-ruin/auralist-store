@@ -96,40 +96,40 @@ const BotAdminChat = ({ isOpen, onClose, initialType = 'bot' }) => {
   return (
     <div className={`fixed bottom-20 right-4 w-96 bg-white rounded-lg shadow-xl border transition-all duration-300 ${
       isOpen ? 'opacity-100 visible' : 'opacity-0 invisible'
-    }`}>
+    }`} style={{ maxHeight: 'calc(100vh - 160px)' }}> {/* Mengubah tinggi maksimum */}
       {/* Header */}
-      <div className="flex justify-between items-center p-4 border-b bg-gray-900 text-white rounded-t-lg">
-        <div className="flex space-x-4">
+      <div className="flex justify-between items-center p-3 border-b bg-gray-900 text-white rounded-t-lg"> {/* Mengurangi padding */}
+        <div className="flex space-x-3"> {/* Mengurangi space */}
           <button
             onClick={() => setChatType('bot')}
-            className={`flex items-center space-x-2 px-3 py-1 rounded ${
+            className={`flex items-center space-x-1 px-2 py-1 rounded text-sm ${
               chatType === 'bot'
                 ? 'bg-blue-600 text-white'
                 : 'text-gray-300 hover:text-white'
             }`}
           >
-            <Bot size={20} />
+            <Bot size={16} />
             <span>Chat Bot</span>
           </button>
           <button
             onClick={() => setChatType('admin')}
-            className={`flex items-center space-x-2 px-3 py-1 rounded ${
+            className={`flex items-center space-x-1 px-2 py-1 rounded text-sm ${
               chatType === 'admin'
                 ? 'bg-blue-600 text-white'
                 : 'text-gray-300 hover:text-white'
             }`}
           >
-            <MessageCircle size={20} />
+            <MessageCircle size={16} />
             <span>Admin</span>
           </button>
         </div>
         <button onClick={onClose} className="text-gray-300 hover:text-white">
-          <X size={20} />
+          <X size={18} />
         </button>
       </div>
-
+  
       {/* Chat Area */}
-      <div className="h-[32rem] flex flex-col">
+      <div className="flex flex-col" style={{ height: 'calc(100vh - 220px)' }}> {/* Menyesuaikan tinggi konten */}
         {/* Messages */}
         <div className="flex-1 p-4 overflow-y-auto">
           {messages.map((message) => (
