@@ -2,11 +2,11 @@ const ChatBotResponse = require('../models/ChatBotResponse');
 const ChatMessage = require('../models/ChatMessage');
 const catchAsync = require('../utils/catchAsync');
 
-// Helper function untuk mencari respons yang paling sesuai
+// Helper function to find the best matching response
 const findBestResponse = async (message) => {
   const words = message.toLowerCase().split(' ');
   
-  // Cari respons yang keyword-nya cocok dengan pesan
+  // Find responses with matching keywords
   const responses = await ChatBotResponse.find({
     isActive: true,
     keywords: {
@@ -18,27 +18,27 @@ const findBestResponse = async (message) => {
     return responses[0].response;
   }
 
-  // Default response jika tidak ada yang cocok
-  return "Maaf, saya tidak mengerti pertanyaan Anda. Silakan hubungi customer service kami untuk bantuan lebih lanjut.";
+  // Default response if no match is found
+  return "I apologize, but I don't understand your question. Please contact our customer service for further assistance.";
 };
 
-// Generate respons otomatis
+// Generate automated response
 exports.generateResponse = catchAsync(async (req, res) => {
   const { message, roomId } = req.body;
 
-  // Dapatkan respons yang sesuai
+  // Get appropriate response
   const botResponse = await findBestResponse(message);
 
-  // Simpan respons bot sebagai pesan baru
+  // Save bot response as new message
   const chatMessage = await ChatMessage.create({
-    sender: null, // null untuk menandakan ini pesan dari bot
+    sender: null, // null indicates bot message
     roomId,
     content: botResponse,
     messageType: 'bot',
     readBy: [{ user: req.user._id }]
   });
 
-  // Emit socket event untuk real-time update
+  // Emit socket event for real-time update
   req.app.get('io').to(`room:${roomId}`).emit('newMessage', chatMessage);
 
   res.status(200).json({
@@ -49,7 +49,7 @@ exports.generateResponse = catchAsync(async (req, res) => {
   });
 });
 
-// CRUD untuk respons bot (admin only)
+// CRUD operations for bot responses (admin only)
 exports.createBotResponse = catchAsync(async (req, res) => {
   const { keywords, response, category, priority } = req.body;
 
@@ -117,31 +117,55 @@ exports.deleteBotResponse = catchAsync(async (req, res) => {
   });
 });
 
-// Inisialisasi respons default
+// Initialize default responses
 exports.initializeDefaultResponses = catchAsync(async () => {
   const defaultResponses = [
     {
-      keywords: ['halo', 'hi', 'hey'],
-      response: 'Halo! Selamat datang di Auralist. Ada yang bisa saya bantu?',
+      keywords: ['hello', 'hi', 'hey', 'greetings'],
+      response: 'Hello! Welcome to Auralist. How can I assist you today?',
       category: 'general',
       priority: 1
     },
     {
-      keywords: ['bayar', 'pembayaran', 'payment'],
-      response: 'Kami menerima pembayaran melalui transfer bank, kartu kredit, dan e-wallet. Untuk informasi lebih lanjut, silakan kunjungi halaman pembayaran kami.',
+      keywords: ['pay', 'payment', 'purchase'],
+      response: 'We accept payments via bank transfer, credit cards, and e-wallets. For more information, please visit our payment page.',
       category: 'payment',
       priority: 1
     },
     {
-      keywords: ['kirim', 'pengiriman', 'shipping'],
-      response: 'Pengiriman dilakukan dalam 1-3 hari kerja. Anda dapat melacak pesanan Anda melalui halaman pesanan.',
+      keywords: ['ship', 'shipping', 'delivery', 'track'],
+      response: 'Shipping takes 1-3 business days. You can track your order through our order tracking page.',
       category: 'shipping',
       priority: 1
     },
     {
-      keywords: ['produk', 'barang'],
-      response: 'Kami menyediakan berbagai produk audio berkualitas tinggi. Silakan kunjungi halaman produk kami untuk melihat koleksi lengkap.',
+      keywords: ['product', 'item', 'stock', 'available'],
+      response: 'We offer a wide range of high-quality audio products. Please visit our products page to view our complete collection.',
       category: 'product',
+      priority: 1
+    },
+    {
+      keywords: ['return', 'refund', 'exchange'],
+      response: 'Our return policy allows returns within 14 days of delivery. Please ensure the product is in its original condition.',
+      category: 'returns',
+      priority: 1
+    },
+    {
+      keywords: ['contact', 'support', 'help', 'service'],
+      response: 'Our customer service team is available 24/7. You can email us at support@auralist.com or use the live chat feature.',
+      category: 'support',
+      priority: 1
+    },
+    {
+      keywords: ['warranty', 'guarantee'],
+      response: 'All our products come with a 1-year manufacturer warranty. For warranty claims, please contact our support team.',
+      category: 'warranty',
+      priority: 1
+    },
+    {
+      keywords: ['price', 'cost', 'discount', 'sale'],
+      response: 'Our prices are competitive and we regularly offer discounts. Check our special offers page for current promotions.',
+      category: 'pricing',
       priority: 1
     }
   ];

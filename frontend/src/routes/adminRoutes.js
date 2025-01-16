@@ -11,6 +11,7 @@ import Settings from '../components/admin/Settings';
 import NotFoundPage from '../pages/NotFound';
 import BrandManager from '../components/admin/BrandManager';
 import CommunityChannelManager from '../components/admin/CommunityChannelManager';
+import ChatManager from '../components/admin/ChatManager';
 
 const AdminRoutes = () => {
   return (
@@ -26,6 +27,7 @@ const AdminRoutes = () => {
         <Route path="analytics" element={<Analytics />} />
         <Route path="settings" element={<Settings />} />
         <Route path="/community-channels" element={<CommunityChannelManager />} />
+        <Route path="chats" element={<ChatManager />} />
         <Route path="*" element={<NotFoundPage />} />
       </Route>
     </Routes>

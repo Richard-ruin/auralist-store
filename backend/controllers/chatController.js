@@ -6,26 +6,7 @@ const AppError = require('../utils/appError');
 const catchAsync = require('../utils/catchAsync');
 
 // Chat room management
-exports.getChatRooms = catchAsync(async (req, res) => {
-  const { type } = req.query;
-  const query = {
-    isActive: true
-  };
-  
-  if (type) {
-    query.type = type;
-  }
-
-  const rooms = await ChatRoom.find(query)
-    .populate('lastMessage')
-    .populate('participants.user', 'name avatar');
-
-  res.status(200).json({
-    status: 'success',
-    data: { rooms }
-  });
-});
-
+// controllers/chatController.js
 exports.createChatRoom = catchAsync(async (req, res, next) => {
   const { name, type, participantIds = [] } = req.body;
 
@@ -33,23 +14,12 @@ exports.createChatRoom = catchAsync(async (req, res, next) => {
     return next(new AppError('Name and type are required', 400));
   }
 
-  // Validate room type
-  if (!['direct', 'community', 'bot', 'admin'].includes(type)) {
-    return next(new AppError('Invalid room type', 400));
-  }
-
-  // Direct chat validation
-  if (type === 'direct' && (!participantIds || participantIds.length !== 1)) {
-    return next(new AppError('Direct chat requires exactly one participant', 400));
-  }
-
-  // Check existing direct chat
-  if (type === 'direct') {
+  // For admin type, ensure only one room per user
+  if (type === 'admin') {
     const existingRoom = await ChatRoom.findOne({
-      type: 'direct',
-      'participants.user': { 
-        $all: [req.user._id, participantIds[0]]
-      }
+      type: 'admin',
+      'participants.user': req.user._id,
+      isActive: true
     });
 
     if (existingRoom) {
@@ -58,6 +28,17 @@ exports.createChatRoom = catchAsync(async (req, res, next) => {
         data: { room: existingRoom }
       });
     }
+
+    // If no active room exists, deactivate any old rooms
+    await ChatRoom.updateMany(
+      {
+        type: 'admin',
+        'participants.user': req.user._id
+      },
+      {
+        isActive: false
+      }
+    );
   }
 
   const participants = [
@@ -68,7 +49,8 @@ exports.createChatRoom = catchAsync(async (req, res, next) => {
   const room = await ChatRoom.create({
     name,
     type,
-    participants
+    participants,
+    isActive: true
   });
 
   await room.populate('participants.user', 'name avatar');
@@ -76,6 +58,30 @@ exports.createChatRoom = catchAsync(async (req, res, next) => {
   res.status(201).json({
     status: 'success',
     data: { room }
+  });
+});
+
+exports.getChatRooms = catchAsync(async (req, res) => {
+  const { type } = req.query;
+  const query = {
+    isActive: true
+  };
+  
+  if (type && type !== 'all') {
+    query.type = type;
+  }
+
+  // Add participant filter to only get rooms user is part of
+  query['participants.user'] = req.user._id;
+
+  const rooms = await ChatRoom.find(query)
+    .populate('participants.user', 'name avatar')
+    .populate('lastMessage')
+    .sort('-updatedAt');
+
+  res.status(200).json({
+    status: 'success',
+    data: { rooms }
   });
 });
 exports.sendChannelMessage = catchAsync(async (req, res, next) => {

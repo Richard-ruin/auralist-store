@@ -1,63 +1,163 @@
 // context/ChatContext.js
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState } from 'react';
 import { useAuth } from '../hooks/useAuth';
 import api from '../services/api';
+import botService from '../services/botService';
 
 const ChatContext = createContext();
 
 export const ChatProvider = ({ children }) => {
   const [rooms, setRooms] = useState([]);
-  const [activeRoom, setActiveRoom] = useState(null);
   const [messages, setMessages] = useState([]);
-  const { user } = useAuth();
-  
-  // Fetch rooms based on type
-  const fetchRooms = async (type = 'community') => {
-    try {
-      const response = await api.get('/chat/rooms', {
-        params: { type }
-      });
-      setRooms(response.data.data.rooms);
-    } catch (error) {
-      console.error('Error fetching rooms:', error);
-    }
-  };
+  const [isLoading, setIsLoading] = useState(false);
+  const [lastFetch, setLastFetch] = useState(null);
+  const [activeRoom, setActiveRoom] = useState(null);
+  const [isBotTyping, setIsBotTyping] = useState(false);
+  const FETCH_COOLDOWN = 5000;
 
-  // Create new room
-  const createRoom = async (name, type = 'community', participantIds = []) => {
+  const { user, refreshToken } = useAuth();
+
+  const fetchMessages = async (roomId) => {
     try {
-      const response = await api.post('/chat/rooms', {
-        name,
-        type,
-        participantIds
-      });
-      setRooms(prev => [...prev, response.data.data.room]);
-      return response.data.data.room;
+      const response = await api.get(`/chat/rooms/${roomId}/messages`);
+      // Sort messages by createdAt in ascending order (oldest first)
+      const sortedMessages = response.data.data.messages.sort(
+        (a, b) => new Date(a.createdAt) - new Date(b.createdAt)
+      );
+      setMessages(sortedMessages);
     } catch (error) {
-      console.error('Error creating room:', error);
+      if (error.response?.status === 401) {
+        await refreshToken();
+        return fetchMessages(roomId);
+      }
+      console.error('Error fetching messages:', error);
       throw error;
     }
   };
 
-  // Fetch messages for a room
-  const fetchMessages = async (roomId) => {
+  const fetchRooms = async (type = 'all') => {
+    if (isLoading) return;
+
+    if (lastFetch && Date.now() - lastFetch < FETCH_COOLDOWN) {
+      return;
+    }
+
     try {
-      const response = await api.get(`/chat/rooms/${roomId}/messages`);
-      setMessages(response.data.data.messages);
+      setIsLoading(true);
+      const response = await api.get('/chat/rooms', {
+        params: { type }
+      });
+      setRooms(response.data.data.rooms);
+      setLastFetch(Date.now());
     } catch (error) {
-      console.error('Error fetching messages:', error);
+      if (error.response?.status === 401) {
+        await refreshToken();
+        return fetchRooms(type);
+      }
+      console.error('Error fetching rooms:', error);
+      throw error;
+    } finally {
+      setIsLoading(false);
     }
   };
 
-  // Send message
-  const sendMessage = async (roomId, content) => {
+  const sendMessage = async (roomId, content, messageType = 'direct') => {
+    if (!roomId) {
+      throw new Error('Room ID is required');
+    }
+  
     try {
+      // Kirim pesan user
       const response = await api.post(`/chat/rooms/${roomId}/messages`, {
-        content
+        content,
+        messageType
       });
+  
+      // Jika ini chat bot, tunggu respons bot
+      if (messageType === 'bot') {
+        setIsBotTyping(true);
+        try {
+          const botResponse = await botService.generateResponse(content, roomId);
+          // Refresh pesan setelah mendapat respons bot
+          await fetchMessages(roomId);
+          return botResponse;
+        } finally {
+          setIsBotTyping(false);
+        }
+      }
+  
+      // Refresh pesan untuk tipe chat lainnya
+      await fetchMessages(roomId);
       return response.data.data.message;
     } catch (error) {
+      if (error.response?.status === 401) {
+        await refreshToken();
+        return sendMessage(roomId, content, messageType);
+      }
       console.error('Error sending message:', error);
+      throw error;
+    }
+  };
+  
+  const initializeBotChat = async () => {
+    try {
+      // Cari room bot yang sudah ada
+      const roomsResponse = await api.get('/chat/rooms', {
+        params: { type: 'bot' }
+      });
+  
+      let botRoom = roomsResponse.data.data.rooms?.[0];
+  
+      if (!botRoom) {
+        // Buat room bot baru jika belum ada
+        const newRoomResponse = await botService.initializeBotChat();
+        botRoom = newRoomResponse;
+      }
+  
+      // Set active room
+      setActiveRoom(botRoom);
+      
+      // Fetch messages untuk room ini
+      if (botRoom._id) {
+        await fetchMessages(botRoom._id);
+      }
+  
+      return botRoom;
+    } catch (error) {
+      if (error.response?.status === 401) {
+        await refreshToken();
+        return initializeBotChat();
+      }
+      console.error('Error initializing bot chat:', error);
+      throw error;
+    }
+  };
+
+
+  const initializeAdminChat = async () => {
+    try {
+      // Try to find existing admin room first
+      const roomsResponse = await api.get('/chat/rooms', {
+        params: { type: 'admin' }
+      });
+
+      const existingAdminRoom = roomsResponse.data.data.rooms[0];
+      if (existingAdminRoom) {
+        return existingAdminRoom;
+      }
+
+      // If no existing room, create new one
+      const response = await api.post('/chat/rooms', {
+        type: 'admin',
+        name: 'Admin Support'
+      });
+      
+      return response.data.data.room;
+    } catch (error) {
+      if (error.response?.status === 401) {
+        await refreshToken();
+        return initializeAdminChat();
+      }
       throw error;
     }
   };
@@ -66,11 +166,13 @@ export const ChatProvider = ({ children }) => {
     rooms,
     messages,
     activeRoom,
+    isLoading,
     setActiveRoom,
     fetchRooms,
-    createRoom,
     fetchMessages,
-    sendMessage
+    sendMessage,
+    initializeBotChat,
+    initializeAdminChat
   };
 
   return (
@@ -87,3 +189,5 @@ export const useChat = () => {
   }
   return context;
 };
+
+export default ChatContext;

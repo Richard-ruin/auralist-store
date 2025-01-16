@@ -21,6 +21,7 @@ const AdminLayout = () => {
     { title: 'Users', icon: <Users size={20} />, path: '/admin/users' },
     { title: 'Analytics', icon: <BarChart3 size={20} />, path: '/admin/analytics' },
     { title: 'Community Channels', icon: <ChevronRight size={20} />, path: '/admin/community-channels' },
+    { title: 'Chats', icon: <ChevronRight size={20} />, path: '/admin/chats' },
     { title: 'Settings', icon: <Settings size={20} />, path: '/admin/settings' }
   ];
 
