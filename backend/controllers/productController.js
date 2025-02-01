@@ -1,6 +1,8 @@
 const Product = require('../models/Product');
 const Brand = require('../models/Brand');
 const Category = require('../models/Category');
+const Order = require('../models/Order');       // Tambahkan ini
+const Review = require('../models/Review');
 const catchAsync = require('../utils/catchAsync');
 const AppError = require('../utils/appError');
 const slugify = require('slugify');
@@ -52,6 +54,164 @@ exports.getProductStats = catchAsync(async (req, res) => {
     }
   });
 });
+
+// Tambahkan di productController.js
+
+exports.getForYouProducts = async (req, res) => {
+  try {
+    const userId = req.user._id;
+
+    // 1. Dapatkan riwayat order user yang sudah selesai (delivered)
+    const userOrders = await Order.find({ 
+      user: userId,
+      status: 'delivered'  // Hanya order yang sudah selesai
+    }).populate({
+      path: 'items.product',
+      populate: [
+        { path: 'category' },
+        { path: 'brand' }
+      ]
+    });
+
+    // 2. Jika user belum memiliki order yang selesai, berikan top rated products
+    if (!userOrders.length) {
+      const topProducts = await Product.find({ stock: { $gt: 0 } })
+        .sort('-averageRating')
+        .limit(4)
+        .populate(['brand', 'category']);
+
+      return res.status(200).json({
+        status: 'success',
+        data: topProducts
+      });
+    }
+
+    // 3. Analisis preferensi user
+    const purchaseHistory = userOrders.flatMap(order => order.items);
+    
+    // Hitung frekuensi kategori
+    const categoryFrequency = {};
+    purchaseHistory.forEach(item => {
+      if (item.product.category) {
+        const catId = item.product.category._id.toString();
+        categoryFrequency[catId] = (categoryFrequency[catId] || 0) + 1;
+      }
+    });
+
+    // Dapatkan review user
+    const userReviews = await Review.find({ 
+      user: userId 
+    }).populate('product');
+
+    // Buat skor preferensi
+    const preferenceScore = {};
+    purchaseHistory.forEach(item => {
+      if (item.product) {
+        const productId = item.product._id.toString();
+        
+        // Base score dari pembelian
+        preferenceScore[productId] = (preferenceScore[productId] || 0) + 1;
+        
+        // Tambah score dari review jika ada
+        const review = userReviews.find(r => 
+          r.product._id.toString() === productId
+        );
+        if (review) {
+          preferenceScore[productId] += (review.rating / 5); // Normalisasi rating
+        }
+      }
+    });
+
+    // 4. Dapatkan rekomendasi menggunakan aggregation pipeline
+    const recommendations = await Product.aggregate([
+      {
+        $match: {
+          stock: { $gt: 0 }, // Hanya produk yang tersedia
+          _id: { 
+            $nin: purchaseHistory.map(item => item.product._id)
+          } // Exclude produk yang sudah dibeli
+        }
+      },
+      {
+        $lookup: {
+          from: 'categories',
+          localField: 'category',
+          foreignField: '_id',
+          as: 'categoryData'
+        }
+      },
+      {
+        $lookup: {
+          from: 'reviews',
+          localField: '_id',
+          foreignField: 'product',
+          as: 'reviews'
+        }
+      },
+      {
+        $addFields: {
+          categoryScore: {
+            $let: {
+              vars: {
+                catId: { $arrayElemAt: ['$categoryData._id', 0] }
+              },
+              in: {
+                $ifNull: [
+                  { $toDouble: `$${categoryFrequency[{ $toString: '$$catId' }]}` },
+                  0
+                ]
+              }
+            }
+          },
+          avgRating: {
+            $avg: '$reviews.rating'
+          }
+        }
+      },
+      {
+        $addFields: {
+          totalScore: {
+            $add: [
+              { $multiply: ['$categoryScore', 2] }, // Kategori weight
+              { $multiply: [{ $ifNull: ['$avgRating', 0] }, 1] }, // Rating weight
+              { $multiply: [{ $ifNull: ['$totalReviews', 0] }, 0.1] } // Popularitas weight
+            ]
+          }
+        }
+      },
+      { $sort: { totalScore: -1 } },
+      { $limit: 4 },
+      {
+        $lookup: {
+          from: 'brands',
+          localField: 'brand',
+          foreignField: '_id',
+          as: 'brand'
+        }
+      },
+      {
+        $lookup: {
+          from: 'categories',
+          localField: 'category',
+          foreignField: '_id',
+          as: 'category'
+        }
+      }
+    ]);
+
+    res.status(200).json({
+      status: 'success',
+      data: recommendations
+    });
+
+  } catch (error) {
+    console.error('For You Products Error:', error);
+    res.status(400).json({
+      status: 'fail',
+      message: error.message
+    });
+  }
+};
 exports.createProduct = async (req, res) => {
   try {
     // Validate required files

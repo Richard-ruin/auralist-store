@@ -12,6 +12,7 @@ import NotFoundPage from '../pages/NotFound';
 import BrandManager from '../components/admin/BrandManager';
 import CommunityChannelManager from '../components/admin/CommunityChannelManager';
 import ChatManager from '../components/admin/ChatManager';
+import ProductReport from '../components/admin/ProductReport';
 
 const AdminRoutes = () => {
   return (
@@ -28,6 +29,7 @@ const AdminRoutes = () => {
         <Route path="settings" element={<Settings />} />
         <Route path="/community-channels" element={<CommunityChannelManager />} />
         <Route path="chats" element={<ChatManager />} />
+        <Route path="ProductReport" element={<ProductReport />} />
         <Route path="*" element={<NotFoundPage />} />
       </Route>
     </Routes>

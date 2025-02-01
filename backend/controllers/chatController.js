@@ -61,29 +61,98 @@ exports.createChatRoom = catchAsync(async (req, res, next) => {
   });
 });
 
+// controllers/chatController.js
+// controllers/chatController.js
 exports.getChatRooms = catchAsync(async (req, res) => {
   const { type } = req.query;
-  const query = {
-    isActive: true
-  };
+  let query = {};
   
+  // Add type filter if specified
   if (type && type !== 'all') {
     query.type = type;
   }
 
-  // Add participant filter to only get rooms user is part of
-  query['participants.user'] = req.user._id;
+  // For admins, show all rooms of specified type
+  // For regular users, only show rooms they're part of
+  if (req.user.role !== 'admin') {
+    query['participants.user'] = req.user._id;
+  }
+
+  console.log('Finding rooms with query:', query); // Debug log
 
   const rooms = await ChatRoom.find(query)
-    .populate('participants.user', 'name avatar')
-    .populate('lastMessage')
+    .populate({
+      path: 'participants.user',
+      select: 'name email avatar'
+    })
+    .populate({
+      path: 'lastMessage',
+      select: 'content createdAt sender'
+    })
     .sort('-updatedAt');
+
+  console.log('Found rooms:', rooms); // Debug log
 
   res.status(200).json({
     status: 'success',
     data: { rooms }
   });
 });
+
+// controllers/chatController.js
+exports.initializeAdminChat = catchAsync(async (req, res, next) => {
+  const { userId } = req.params;
+
+  // Cari room yang sudah ada
+  let room = await ChatRoom.findOne({
+    type: 'admin',
+    'participants.user': userId
+  });
+
+  // Jika tidak ada room, buat baru
+  if (!room) {
+    room = await ChatRoom.create({
+      name: 'Admin Support',
+      type: 'admin',
+      participants: [
+        { user: userId, role: 'user' },
+        { user: req.user._id, role: 'admin' }
+      ],
+      isActive: true
+    });
+  } else {
+    // Jika room ada tapi admin belum jadi participant, tambahkan
+    const adminExists = room.participants.some(p => 
+      p.user.toString() === req.user._id.toString()
+    );
+
+    if (!adminExists) {
+      room.participants.push({
+        user: req.user._id,
+        role: 'admin',
+        joinedAt: new Date()
+      });
+      await room.save();
+    }
+  }
+
+  await room.populate([
+    {
+      path: 'participants.user',
+      select: 'name email avatar'
+    },
+    {
+      path: 'lastMessage',
+      select: 'content createdAt sender'
+    }
+  ]);
+
+  res.status(200).json({
+    status: 'success',
+    data: { room }
+  });
+});
+
 exports.sendChannelMessage = catchAsync(async (req, res, next) => {
   const { channelId } = req.params;
   const { content } = req.body;
@@ -126,16 +195,42 @@ exports.sendMessage = catchAsync(async (req, res, next) => {
     return next(new AppError('Message content is required', 400));
   }
 
-  // Check room exists and user is participant
-  const room = await ChatRoom.findOne({
-    _id: roomId,
-    'participants.user': req.user._id
-  });
+  console.log('Attempting to send message. RoomId:', roomId);
+  console.log('Current user:', req.user._id);
+
+  // Cari room dan jika admin, tambahkan sebagai participant jika belum ada
+  let room = await ChatRoom.findById(roomId);
 
   if (!room) {
-    return next(new AppError('Chat room not found or access denied', 404));
+    return next(new AppError('Chat room not found', 404));
   }
 
+  // Jika user adalah admin, tambahkan sebagai participant jika belum ada
+  if (req.user.role === 'admin') {
+    const isParticipant = room.participants.some(p => 
+      p.user.toString() === req.user._id.toString()
+    );
+
+    if (!isParticipant) {
+      room.participants.push({
+        user: req.user._id,
+        role: 'admin',
+        joinedAt: new Date()
+      });
+      await room.save();
+    }
+  } else {
+    // Untuk non-admin, cek participation seperti biasa
+    const isParticipant = room.participants.some(p => 
+      p.user.toString() === req.user._id.toString()
+    );
+    
+    if (!isParticipant) {
+      return next(new AppError('You are not a participant in this chat room', 403));
+    }
+  }
+
+  // Buat pesan
   const message = await ChatMessage.create({
     sender: req.user._id,
     roomId: room._id,
@@ -143,22 +238,58 @@ exports.sendMessage = catchAsync(async (req, res, next) => {
     messageType: room.type
   });
 
-  // Update last message
+  // Update lastMessage
   room.lastMessage = message._id;
   await room.save();
 
   // Populate sender info
   await message.populate('sender', 'name avatar');
 
-  // Emit to room
-  const io = req.app.get('io');
-  if (io) {
-    io.to(`room:${roomId}`).emit('newMessage', message);
+  // Emit socket event
+  if (req.app.get('io')) {
+    req.app.get('io').to(`room:${roomId}`).emit('newMessage', message);
   }
 
   res.status(201).json({
     status: 'success',
     data: { message }
+  });
+});
+
+exports.createOrGetAdminRoom = catchAsync(async (req, res, next) => {
+  const { userId } = req.body;
+
+  // Cari room yang sudah ada
+  let room = await ChatRoom.findOne({
+    type: 'admin',
+    'participants': {
+      $all: [
+        { $elemMatch: { user: userId, role: 'user' } },
+        { $elemMatch: { user: req.user._id, role: 'admin' } }
+      ]
+    },
+    isActive: true
+  });
+
+  // Jika tidak ada, buat room baru
+  if (!room) {
+    room = await ChatRoom.create({
+      name: 'Admin Support',
+      type: 'admin',
+      participants: [
+        { user: userId, role: 'user' },
+        { user: req.user._id, role: 'admin' }
+      ],
+      isActive: true
+    });
+  }
+
+  // Populate participant info
+  await room.populate('participants.user', 'name email avatar');
+
+  res.status(200).json({
+    status: 'success',
+    data: { room }
   });
 });
 

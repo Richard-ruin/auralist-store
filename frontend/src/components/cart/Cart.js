@@ -1,4 +1,3 @@
-// src/components/cart/Cart.js
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ShoppingCart, Trash2 } from 'lucide-react';
@@ -16,14 +15,14 @@ const Cart = () => {
 
   if (loading && !cart) {
     return (
-      <div className="flex justify-center items-center min-h-[400px]">
+      <div className="flex justify-center items-center min-h-[400px] pt-16">
         <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-gray-900" />
       </div>
     );
   }
 
   return (
-    <div className="container mx-auto px-4 py-8">
+    <div className="container mx-auto px-4 py-8 pt-16">
       <div className="flex justify-between items-center mb-6">
         <h1 className="text-2xl font-bold">Shopping Cart</h1>
         {cart?.items.length > 0 && (

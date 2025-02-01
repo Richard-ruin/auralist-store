@@ -25,7 +25,8 @@
     "socket.io-client": "^4.8.1",
     "tailwind-merge": "^2.5.5",
     "toast": "^0.5.4",
-    "web-vitals": "^2.1.4"
+    "web-vitals": "^2.1.4",
+    "xlsx": "^0.18.5"
   },
   "devDependencies": {
     "@babel/plugin-proposal-private-property-in-object": "^7.21.11",

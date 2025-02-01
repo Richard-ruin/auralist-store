@@ -371,7 +371,6 @@ const Profile = () => {
     { id: 'profile', name: 'Profile', icon: User },
     { id: 'orders', name: 'Orders', icon: Package },
     { id: 'wishlist', name: 'Wishlist', icon: Heart },
-    { id: 'security', name: 'Security', icon: Lock },
     { id: 'address', name: 'Addresses', icon: MapPin }
   ];
 
@@ -570,60 +569,7 @@ const Profile = () => {
                 </div>
               )}
 
-              {activeTab === 'security' && (
-                <div>
-                  <h3 className="text-lg font-medium text-gray-900 mb-6">Change Password</h3>
-                  <form onSubmit={handleChangePassword} className="space-y-4">
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700">
-                        Current Password
-                      </label>
-                      <input
-                        type="password"
-                        name="currentPassword"
-                        value={formData.currentPassword}
-                        onChange={handleInputChange}
-                        className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"
-                      />
-                    </div>
-
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700">
-                        New Password
-                      </label>
-                      <input
-                        type="password"
-                        name="newPassword"
-                        value={formData.newPassword}
-                        onChange={handleInputChange}
-                        className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"
-                      />
-                    </div>
-
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700">
-                        Confirm New Password
-                      </label>
-                      <input
-                        type="password"
-                        name="confirmPassword"
-                        value={formData.confirmPassword}
-                        onChange={handleInputChange}
-                        className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"
-                      />
-                    </div>
-
-                    <div className="flex justify-end">
-                      <button
-                        type="submit"
-                        className="bg-indigo-600 text-white px-4 py-2 rounded-md hover:bg-indigo-700"
-                      >
-                        Update Password
-                      </button>
-                    </div>
-                  </form>
-                </div>
-              )}
+              
               {activeTab === 'address' && (
   <div>
     <AddressSection />

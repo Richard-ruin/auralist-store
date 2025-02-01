@@ -6,8 +6,7 @@ const Navigation = () => {
     { path: '/', label: 'Home' },
     { path: '/shop', label: 'Shop' },
     { path: '/categories', label: 'Categories' },
-    { path: '/brands', label: 'Brands' },
-    { path: '/about', label: 'About' }
+    { path: '/brands', label: 'Brands' }
   ];
 
   return (

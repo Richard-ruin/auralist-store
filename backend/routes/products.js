@@ -7,6 +7,9 @@ const { protect, restrictTo } = require('../middleware/auth');
 // Add the stats route before other routes
 router.get('/stats', protect, restrictTo('admin'), productController.getProductStats);
 
+// Ubah auth menjadi protect
+router.get('/for-you', protect, productController.getForYouProducts);
+
 router
   .route('/')
   .get(productController.getAllProducts)

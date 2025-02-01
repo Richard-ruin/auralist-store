@@ -1,4 +1,4 @@
-// Modified models/ChatRoom.js
+// models/ChatRoom.js
 const mongoose = require('mongoose');
 
 const chatRoomSchema = new mongoose.Schema({
@@ -14,7 +14,8 @@ const chatRoomSchema = new mongoose.Schema({
   participants: [{
     user: {
       type: mongoose.Schema.ObjectId,
-      ref: 'User'
+      ref: 'User',
+      required: true
     },
     role: {
       type: String,
@@ -30,14 +31,18 @@ const chatRoomSchema = new mongoose.Schema({
     type: mongoose.Schema.ObjectId,
     ref: 'ChatMessage'
   },
-  description: String,
   isActive: {
     type: Boolean,
     default: true
   }
 }, {
-  timestamps: true
+  timestamps: true,
+  toJSON: { virtuals: true },
+  toObject: { virtuals: true }
 });
+
+// Add index for better query performance
+chatRoomSchema.index({ type: 1, updatedAt: -1 });
 
 const ChatRoom = mongoose.model('ChatRoom', chatRoomSchema);
 module.exports = ChatRoom;

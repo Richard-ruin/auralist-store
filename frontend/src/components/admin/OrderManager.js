@@ -14,6 +14,8 @@ import OrderFilter from './OrderFilter';
 import Pagination from './Pagination';
 import { filterOrders, sortOrders } from '../../utils/orderHelpers';
 import { toast } from 'react-hot-toast';
+import * as XLSX from 'xlsx';
+import ExportModal from './ExportModal';
 
 const OrderManager = () => {
   // States
@@ -39,6 +41,7 @@ const OrderManager = () => {
   const [loading, setLoading] = useState(true);
   const [selectedOrder, setSelectedOrder] = useState(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isExportModalOpen, setIsExportModalOpen] = useState(false);
 
   // Fetch initial data
   useEffect(() => {
@@ -172,27 +175,31 @@ const OrderManager = () => {
     }
   };
 
-  const handleExport = () => {
-    const csv = filteredOrders.map(order => ({
-      'Order ID': order._id,
-      'Customer': order.user.name,
-      'Email': order.user.email,
-      'Date': new Date(order.createdAt).toLocaleDateString(),
-      'Amount': order.totalAmount,
-      'Status': order.status,
-      'Payment Status': order.paymentStatus
-    }));
+  const handleExport = (filters) => {
+    const filteredData = filteredOrders.filter(order => {
+      const orderDate = new Date(order.createdAt);
+      const matchesDate = orderDate.getFullYear() == filters.year && 
+                         (orderDate.getMonth() + 1) == filters.month;
+      const matchesStatus = filters.status === 'all' || order.status === filters.status;
+      return matchesDate && matchesStatus;
+    });
 
-    const csvContent = "data:text/csv;charset=utf-8," + 
-      Object.keys(csv[0]).join(",") + "\n" +
-      csv.map(row => Object.values(row).join(",")).join("\n");
-    
-    const link = document.createElement("a");
-    link.href = encodeURI(csvContent);
-    link.download = "orders.csv";
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
+    const worksheet = XLSX.utils.aoa_to_sheet([
+      ['Order ID', 'Customer', 'Email', 'Date', 'Amount', 'Status', 'Payment Status'],
+      ...filteredData.map(order => [
+        order._id,
+        order.user?.name || 'N/A',
+        order.user?.email || 'N/A',
+        new Date(order.createdAt).toLocaleDateString(),
+        order.totalAmount?.toFixed(2) || '0.00',
+        order.status || 'Unknown',
+        order.paymentStatus || 'Unknown'
+      ])
+    ]);
+
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, 'Orders');
+    XLSX.writeFile(workbook, `orders_${filters.year}_${filters.month}.xlsx`);
   };
 
   const getCurrentPageOrders = () => {
@@ -295,10 +302,10 @@ const OrderManager = () => {
           </div>
         </div>
         <div className="flex items-center gap-4 w-full sm:w-auto">
-          <button
-            onClick={handleExport}
-            className="flex items-center px-4 py-2 border border-gray-300 rounded-md hover:bg-gray-50"
-          >
+        <button
+  onClick={() => setIsExportModalOpen(true)}
+  className="flex items-center px-4 py-2 border border-gray-300 rounded-md hover:bg-gray-50"
+>
             <Download className="w-5 h-5 mr-2" />
             Export
           </button>
@@ -415,6 +422,11 @@ const OrderManager = () => {
   onConfirm={handleConfirmPayment}
   onStatusUpdate={handleStatusUpdate}
   order={selectedOrder}
+/>
+<ExportModal
+  isOpen={isExportModalOpen}
+  onClose={() => setIsExportModalOpen(false)}
+  onExport={handleExport}
 />
     </div>
   );

@@ -26,6 +26,7 @@ const reviewRoutes = require('./routes/reviews');
 const chatRoutes = require('./routes/chat');
 const chatBotRoutes = require('./routes/chatBot');
 const communityChannelRoutes = require('./routes/communityChannels');
+const reportRoutes = require('./routes/report');
 
 // Import error handler
 const errorHandler = require('./middleware/errorHandler');
@@ -186,6 +187,7 @@ app.use('/api/reviews', reviewRoutes);
 app.use('/api/chat', chatRoutes);
 app.use('/api/chatbot', chatBotRoutes);
 app.use('/api/community/channels', communityChannelRoutes);
+app.use('/api/reports', reportRoutes);
 app.set('io', io);
 
 // Error handling
