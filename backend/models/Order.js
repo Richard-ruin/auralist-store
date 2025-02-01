@@ -44,8 +44,24 @@ const orderSchema = new mongoose.Schema({
   },
   status: {
     type: String,
-    enum: ['processing', 'confirmed', 'shipped', 'delivered', 'cancelled'],
+    enum: ['processing', 'confirmed', 'shipped', 'delivered', 'cancelled', 'return_requested', 'return_approved', 'return_rejected', 'returned'],
     default: 'processing'
+  },
+  return: {
+    requestDate: Date,
+    status: {
+      type: String,
+      enum: ['pending', 'approved', 'rejected'],
+    },
+    reason: String,
+    images: [String], // Array of image URLs
+    unboxingVideo: String,
+    adminNotes: String,
+    processedBy: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'User'
+    },
+    processedAt: Date
   },
   paymentProof: {
     type: String

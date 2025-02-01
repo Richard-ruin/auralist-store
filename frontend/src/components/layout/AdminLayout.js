@@ -18,6 +18,7 @@ const AdminLayout = () => {
     { title: 'Categories', icon: <FolderTree size={20} />, path: '/admin/categories' },
     { title: 'Brands', icon: <Tag size={20} />, path: '/admin/brands' },
     { title: 'Orders', icon: <ShoppingCart size={20} />, path: '/admin/orders' },
+    { title: 'Returns', icon: <ChevronRight size={20} />, path: '/admin/returns' },
     { title: 'Users', icon: <Users size={20} />, path: '/admin/users' },
     { title: 'Analytics', icon: <BarChart3 size={20} />, path: '/admin/analytics' },
     { title: 'Community Channels', icon: <Hash size={20} />, path: '/admin/community-channels' },

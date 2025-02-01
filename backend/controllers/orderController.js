@@ -5,6 +5,7 @@ const Address = require('../models/Address'); // Make sure this is imported
 const catchAsync = require('../utils/catchAsync');
 const AppError = require('../utils/appError');
 const mongoose = require('mongoose'); // Add this import
+const fs = require('fs');
 
 exports.createOrder = catchAsync(async (req, res, next) => {
   try {
@@ -40,6 +41,212 @@ exports.createOrder = catchAsync(async (req, res, next) => {
   } catch (error) {
     next(error);
   }
+});
+// controllers/orderController.js
+exports.checkCanReturn = catchAsync(async (req, res, next) => {
+  const orderId = req.params.orderId;
+  const userId = req.user.id;
+
+  // Cek order yang eligible untuk return
+  const order = await Order.findOne({
+    _id: orderId,
+    user: userId,
+    status: 'delivered',
+    'return': { $exists: false } // Pastikan belum pernah return
+  });
+
+  const canReturn = Boolean(order);
+
+  res.status(200).json({
+    status: 'success',
+    canReturn,
+    message: order 
+      ? 'You can return this order'
+      : 'This order is not eligible for return',
+  });
+});
+exports.getReturnStats = catchAsync(async (req, res) => {
+  const [
+    totalReturns,
+    returnRequested,
+    returnApproved,
+    returnRejected
+  ] = await Promise.all([
+    Order.countDocuments({ 'return': { $exists: true } }),
+    Order.countDocuments({ status: 'return_requested' }),
+    Order.countDocuments({ status: 'return_approved' }),
+    Order.countDocuments({ status: 'return_rejected' })
+  ]);
+
+  res.status(200).json({
+    status: 'success',
+    data: {
+      totalReturns,
+      returnRequested,
+      returnApproved,
+      returnRejected
+    }
+  });
+});
+
+exports.getReturns = catchAsync(async (req, res) => {
+  // Hanya ambil order yang memiliki return request
+  const returns = await Order.find({
+    status: { 
+      $in: ['return_requested', 'return_approved', 'return_rejected'] 
+    }
+  })
+  .populate('user', 'name email')
+  .populate('items.product', 'name images')
+  .sort('-return.requestDate');
+
+  res.status(200).json({
+    status: 'success',
+    data: {
+      orders: returns
+    }
+  });
+});
+exports.getReturnRequests = catchAsync(async (req, res) => {
+  const returns = await Order.find({
+    status: 'return_requested'
+  })
+  .populate('user', 'name email')
+  .populate('items.product', 'name images')
+  .sort('-createdAt');
+
+  res.status(200).json({
+    status: 'success',
+    data: {
+      orders: returns
+    }
+  });
+});
+exports.getUserOrders = catchAsync(async (req, res) => {
+  const { status } = req.query;
+  let query = { user: req.user._id };
+  
+  // Tambahkan filter status jika ada
+  if (status) {
+    query.status = status;
+  }
+
+  const orders = await Order.find(query)
+    .populate('items.product')
+    .populate('shippingAddress')
+    .sort('-createdAt');
+
+  res.status(200).json({
+    status: 'success',
+    results: orders.length,
+    data: {
+      orders
+    }
+  });
+});
+exports.requestReturn = catchAsync(async (req, res, next) => {
+  const { orderId } = req.params;
+  const { reason } = req.body;
+  
+  console.log('Return request received:', {
+    orderId,
+    reason,
+    files: req.files,
+    body: req.body
+  });
+
+  try {
+    const order = await Order.findOne({
+      _id: orderId,
+      user: req.user._id,
+      status: 'delivered'
+    });
+
+    if (!order) {
+      return next(new AppError('Order not found or not eligible for return', 404));
+    }
+
+    // Pastikan direktori upload ada
+    const uploadDirs = [
+      'public/uploads/returns',
+      'public/uploads/returns/images',
+      'public/uploads/returns/videos'
+    ];
+
+    uploadDirs.forEach(dir => {
+      if (!fs.existsSync(dir)) {
+        fs.mkdirSync(dir, { recursive: true });
+      }
+    });
+
+    // Get uploaded files dengan pengecekan yang lebih baik
+    const images = req.files?.images ? 
+      req.files.images.map(file => file.filename) : [];
+      
+    const unboxingVideo = req.files?.unboxingVideo?.[0]?.filename || null;
+
+    console.log('Files to save:', { images, unboxingVideo }); // Debug
+
+    // Update order with return request
+    order.status = 'return_requested';
+    order.return = {
+      requestDate: Date.now(),
+      status: 'pending',
+      reason,
+      images,
+      unboxingVideo,
+      processedAt: null,
+      processedBy: null,
+      adminNotes: null
+    };
+
+    const savedOrder = await order.save();
+    console.log('Saved order:', savedOrder); // Debug
+
+    res.status(200).json({
+      status: 'success',
+      data: { order: savedOrder }
+    });
+  } catch (error) {
+    console.error('Error processing return request:', error);
+    // Hapus file yang telah diupload jika terjadi error
+    if (req.files) {
+      Object.values(req.files).flat().forEach(file => {
+        if (fs.existsSync(file.path)) {
+          fs.unlinkSync(file.path);
+        }
+      });
+    }
+    return next(new AppError(`Failed to process return request: ${error.message}`, 500));
+  }
+});
+
+// Process return (admin)
+exports.processReturn = catchAsync(async (req, res, next) => {
+  const { orderId } = req.params;
+  const { status, adminNotes } = req.body;
+
+  const order = await Order.findOne({
+    _id: orderId,
+    status: 'return_requested'
+  });
+
+  if (!order) {
+    return next(new AppError('Return request not found', 404));
+  }
+
+  order.status = status === 'approved' ? 'return_approved' : 'return_rejected';
+  order.return.status = status;
+  order.return.adminNotes = adminNotes;
+  order.return.processedBy = req.user._id;
+  order.return.processedAt = Date.now();
+
+  await order.save();
+
+  res.status(200).json({
+    status: 'success',
+    data: { order }
+  });
 });
 exports.getOrderStats = catchAsync(async (req, res) => {
   const now = new Date();

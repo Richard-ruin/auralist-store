@@ -112,6 +112,9 @@ app.use('/api/images', (req, res, next) => {
 }, express.static(path.join(__dirname, 'public/images')));
 app.use('/uploads/profiles', express.static(path.join(__dirname, 'public/uploads/profiles')));
 
+app.use('/uploads', express.static('public/uploads'));
+app.use('/api/uploads/returns/images', express.static(path.join(__dirname, 'public/uploads/returns/images')));
+app.use('/api/uploads/returns/videos', express.static(path.join(__dirname, 'public/uploads/returns/videos')));
 
 // Socket.IO Authentication Middleware
 io.use(async (socket, next) => {

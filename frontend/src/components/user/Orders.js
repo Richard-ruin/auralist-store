@@ -1,7 +1,10 @@
+// components/user/Orders.js
 import React, { useState, useEffect } from 'react';
 import { Package, ChevronDown, ChevronUp, Clock, RefreshCcw, Check, X, ExternalLink, ImageIcon } from 'lucide-react';
 import { toast } from 'react-hot-toast';
 import { useNavigate } from 'react-router-dom';
+import returnService from '../../services/returnService';
+import ReturnRequestForm from '../order/ReturnRequestForm';
 
 const ProductImage = ({ image, name }) => {
   return (
@@ -30,6 +33,8 @@ const Orders = () => {
   const [expandedOrders, setExpandedOrders] = useState({});
   const [filterStatus, setFilterStatus] = useState('all');
   const [loading, setLoading] = useState(true);
+  const [showReturnForm, setShowReturnForm] = useState(false);
+  const [selectedOrder, setSelectedOrder] = useState(null);
   const navigate = useNavigate();
 
   const fetchOrders = async () => {
@@ -43,7 +48,7 @@ const Orders = () => {
         return;
       }
 
-      const response = await fetch('http://localhost:5000/api/orders/my-orders', {
+      const response = await fetch(`${process.env.REACT_APP_API_URL}/orders/my-orders`, {
         method: 'GET',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -84,13 +89,30 @@ const Orders = () => {
     } else {
       fetchOrders();
     }
-  }, []);
+  }, [navigate]);
 
   const toggleOrderExpansion = (orderId) => {
     setExpandedOrders(prev => ({
       ...prev,
       [orderId]: !prev[orderId]
     }));
+  };
+
+  const handleReturnRequest = (order) => {
+    setSelectedOrder(order);
+    setShowReturnForm(true);
+  };
+
+  const handleReturnSubmit = async (formData) => {
+    try {
+      await returnService.submitReturn(selectedOrder._id, formData);
+      toast.success('Return request submitted successfully');
+      setShowReturnForm(false);
+      setSelectedOrder(null);
+      fetchOrders(); // Refresh orders list
+    } catch (error) {
+      toast.error('Failed to submit return request');
+    }
   };
 
   const getStatusColor = (status) => {
@@ -105,6 +127,12 @@ const Orders = () => {
       case 'pending':
         return 'bg-blue-100 text-blue-800';
       case 'cancelled':
+        return 'bg-red-100 text-red-800';
+      case 'return_requested':
+        return 'bg-purple-100 text-purple-800';
+      case 'return_approved':
+        return 'bg-green-100 text-green-800';
+      case 'return_rejected':
         return 'bg-red-100 text-red-800';
       default:
         return 'bg-gray-100 text-gray-800';
@@ -127,6 +155,46 @@ const Orders = () => {
       default:
         return <Clock className="w-4 h-4" />;
     }
+  };
+  useEffect(() => {
+    const fetchOrders = async () => {
+      try {
+        const response = await fetch(`${process.env.REACT_APP_API_URL}/orders/my-orders`, {
+          headers: {
+            'Authorization': `Bearer ${localStorage.getItem('token')}`,
+          }
+        });
+        const data = await response.json();
+        console.log('Orders fetched:', data); // Debugging
+        if (data.status === 'success') {
+          setOrders(data.data.orders);
+        }
+      } catch (error) {
+        console.error('Error fetching orders:', error);
+      }
+    };
+  
+    fetchOrders();
+  }, []);
+
+  const renderOrderActions = (order) => {
+    console.log('Order in renderOrderActions:', order); // Debugging
+  
+    if (order.status === 'delivered') {
+      return (
+        <div className="mt-4 flex items-center space-x-2">
+          <span className="text-gray-600">Need to return?</span>
+          <button
+            onClick={() => handleReturnRequest(order)}
+            className="text-indigo-600 hover:text-indigo-800 font-medium underline"
+          >
+            Request Return Here
+          </button>
+        </div>
+      );
+    }
+  
+    return null; // Untuk status lain, tidak menampilkan apapun
   };
 
   if (loading) {
@@ -155,8 +223,11 @@ const Orders = () => {
             <option value="all">All Orders</option>
             <option value="pending">Pending</option>
             <option value="processing">Processing</option>
-            <option value="completed">Completed</option>
+            <option value="delivered">Delivered</option>
             <option value="cancelled">Cancelled</option>
+            <option value="return_requested">Return Requested</option>
+            <option value="return_approved">Return Approved</option>
+            <option value="return_rejected">Return Rejected</option>
           </select>
         </div>
       </div>
@@ -179,88 +250,64 @@ const Orders = () => {
               className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden"
             >
               {/* Order Header */}
-            <div className="px-6 py-4 border-b border-gray-200">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center space-x-4">
-                  <Package className="w-5 h-5 text-gray-400" />
-                  <div>
-                    <p className="text-sm font-medium text-gray-900">
-                      Order ID: {order._id}
-                    </p>
-                    <p className="text-sm text-gray-500">
-                      Placed on {new Date(order.createdAt).toLocaleDateString()}
-                    </p>
-                  </div>
-                </div>
-                <div className="flex items-center space-x-4">
-                  <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getStatusColor(order.status)}`}>
-                    {getStatusIcon(order.status)}
-                    <span className="ml-1 capitalize">{order.status}</span>
-                  </span>
-                  <button
-                    onClick={() => toggleOrderExpansion(order._id)}
-                    className="text-gray-400 hover:text-gray-500"
-                  >
-                    {expandedOrders[order._id] ? (
-                      <ChevronUp className="w-5 h-5" />
-                    ) : (
-                      <ChevronDown className="w-5 h-5" />
-                    )}
-                  </button>
-                </div>
-              </div>
-            </div>
-
-            {/* Order Details */}
-            {expandedOrders[order._id] && (
-              <div className="px-6 py-4">
-                {/* Order Items */}
-                <div className="space-y-4">
-                  {order.items.map((item, index) => (
-                    <div key={index} className="flex items-center space-x-4">
-                      <div className="flex-shrink-0 w-16 h-16">
-                        <ProductImage 
-                          image={item.product?.mainImage} 
-                          name={item.product?.name} 
-                        />
-                      </div>
-                      <div className="flex-1">
-                        <p className="text-sm font-medium text-gray-900">
-                          {item.product?.name}
-                        </p>
-                        <p className="text-sm text-gray-500">
-                          Quantity: {item.quantity}
-                        </p>
-                      </div>
+              <div className="px-6 py-4 border-b border-gray-200">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center space-x-4">
+                    <Package className="w-5 h-5 text-gray-400" />
+                    <div>
                       <p className="text-sm font-medium text-gray-900">
-                        ${item.price?.toFixed(2)}
+                        Order ID: {order._id}
+                      </p>
+                      <p className="text-sm text-gray-500">
+                        Placed on {new Date(order.createdAt).toLocaleDateString()}
                       </p>
                     </div>
-                  ))}
-                </div>
-
-                {/* Payment Information */}
-                <div className="mt-6 border-t border-gray-200 pt-4">
-                  <h4 className="text-sm font-medium text-gray-900">Payment Information</h4>
-                  <div className="mt-2">
-                    <p className="text-sm text-gray-500">
-                      Method: <span className="font-medium capitalize">{order.paymentMethod}</span>
-                    </p>
-                    {order.proofImage && (
-                      <div className="mt-2">
-                        <p className="text-sm text-gray-500 mb-1">Payment Proof:</p>
-                        <a
-                          href={`${process.env.REACT_APP_API_URL}/images/payments/${order.proofImage}`}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="text-sm text-indigo-600 hover:text-indigo-800 flex items-center space-x-1"
-                        >
-                          <span>View Payment Proof</span>
-                          <ExternalLink className="w-4 h-4" />
-                          </a>
-                        </div>
+                  </div>
+                  <div className="flex items-center space-x-4">
+                    <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getStatusColor(order.status)}`}>
+                      {getStatusIcon(order.status)}
+                      <span className="ml-1 capitalize">{order.status}</span>
+                    </span>
+                    <button
+                      onClick={() => toggleOrderExpansion(order._id)}
+                      className="text-gray-400 hover:text-gray-500"
+                    >
+                      {expandedOrders[order._id] ? (
+                        <ChevronUp className="w-5 h-5" />
+                      ) : (
+                        <ChevronDown className="w-5 h-5" />
                       )}
-                    </div>
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              {/* Order Details */}
+              {expandedOrders[order._id] && (
+                <div className="px-6 py-4">
+                  {/* Order Items */}
+                  <div className="space-y-4">
+                    {order.items.map((item, index) => (
+                      <div key={index} className="flex items-center space-x-4">
+                        <div className="flex-shrink-0 w-16 h-16">
+                          <ProductImage 
+                            image={item.product?.images[0]} 
+                            name={item.product?.name} 
+                          />
+                        </div>
+                        <div className="flex-1">
+                          <p className="text-sm font-medium text-gray-900">
+                            {item.product?.name}
+                          </p>
+                          <p className="text-sm text-gray-500">
+                            Quantity: {item.quantity}
+                          </p>
+                        </div>
+                        <p className="text-sm font-medium text-gray-900">
+                          ${item.price?.toFixed(2)}
+                        </p>
+                      </div>
+                    ))}
                   </div>
 
                   {/* Order Summary */}
@@ -282,11 +329,17 @@ const Orders = () => {
                           <p>{order.shippingAddress.street}</p>
                           <p>
                             {order.shippingAddress.city}, {order.shippingAddress.state}{' '}
-                            {order.shippingAddress.zipCode}
+                            {order.shippingAddress.postalCode}
                           </p>
+                          <p>{order.shippingAddress.country}</p>
                         </div>
                       )}
                     </div>
+                  </div>
+
+                  {/* Return Action */}
+                  <div className="mt-6 border-t border-gray-200 pt-4">
+                    {renderOrderActions(order)}
                   </div>
                 </div>
               )}
@@ -294,6 +347,26 @@ const Orders = () => {
           ))
         )}
       </div>
+
+      {/* Return Form Modal */}
+      {showReturnForm && selectedOrder && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+          <div className="bg-white rounded-lg max-w-lg w-full max-h-[90vh] overflow-y-auto">
+            <ReturnRequestForm
+              orderId={selectedOrder._id}
+              onSuccess={() => {
+                setShowReturnForm(false);
+                setSelectedOrder(null);
+                fetchOrders();
+              }}
+              onCancel={() => {
+                setShowReturnForm(false);
+                setSelectedOrder(null);
+              }}
+            />
+          </div>
+        </div>
+      )}
     </div>
   );
 };
