@@ -74,36 +74,37 @@ const Dashboard = () => {
         );
 
         // Prepare stats data
-        const stats = [
-          {
-            title: 'Total Revenue',
-            value: `$${totalRevenue.toLocaleString()}`,
-            change: `${revenueChange}%`,
-            isIncrease: revenueChange > 0,
-            icon: <DollarSign className="w-6 h-6" />
-          },
-          {
-            title: 'Total Orders',
-            value: orderStats.data.total.toString(),
-            change: `${((orderStats.data.thisMonth / orderStats.data.total) * 100).toFixed(1)}%`,
-            isIncrease: orderStats.data.thisMonth > 0,
-            icon: <ShoppingBag className="w-6 h-6" />
-          },
-          {
-            title: 'Total Customers',
-            value: userStats.data.totalUsers.toString(),
-            change: `${((userStats.data.activeUsers / userStats.data.totalUsers) * 100).toFixed(1)}%`,
-            isIncrease: true,
-            icon: <Users className="w-6 h-6" />
-          },
-          {
-            title: 'Low Stock Items',
-            value: lowStockProducts.length.toString(),
-            change: `${((lowStockProducts.length / productsResponse.data.data.length) * 100).toFixed(1)}%`,
-            isIncrease: false,
-            icon: <Package className="w-6 h-6" />
-          }
-        ];
+        // Replace the stats preparation block with this safer version
+const stats = [
+  {
+    title: 'Total Revenue',
+    value: `$${totalRevenue.toLocaleString()}`,
+    change: `${revenueChange}%`,
+    isIncrease: revenueChange > 0,
+    icon: <DollarSign className="w-6 h-6" />
+  },
+  {
+    title: 'Total Orders',
+    value: (orderStats.data?.total || 0).toString(),
+    change: `${((orderStats.data?.thisMonth || 0) / (orderStats.data?.total || 1) * 100).toFixed(1)}%`,
+    isIncrease: (orderStats.data?.thisMonth || 0) > 0,
+    icon: <ShoppingBag className="w-6 h-6" />
+  },
+  {
+    title: 'Total Customers',
+    value: (userStats.data?.totalUsers || 0).toString(),
+    change: `${((userStats.data?.activeUsers || 0) / (userStats.data?.totalUsers || 1) * 100).toFixed(1)}%`,
+    isIncrease: true,
+    icon: <Users className="w-6 h-6" />
+  },
+  {
+    title: 'Low Stock Items',
+    value: lowStockProducts.length.toString(),
+    change: `${((lowStockProducts.length / (productsResponse.data?.data?.length || 1)) * 100).toFixed(1)}%`,
+    isIncrease: false,
+    icon: <Package className="w-6 h-6" />
+  }
+];
 
         // Get recent orders
         const recentOrders = ordersResponse.data.orders

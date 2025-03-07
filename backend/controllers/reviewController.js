@@ -7,17 +7,17 @@ const AppError = require('../utils/appError');
 exports.createReview = catchAsync(async (req, res, next) => {
   const productId = req.body.product; // Ubah dari productId ke product
 
-  // Cek order yang delivered dengan product ini
+  // Cek order yang accepted dengan product ini
   const order = await Order.findOne({
     user: req.user.id,
-    status: 'delivered',
+    status: 'accepted',
     'items.product': productId // Perbaiki query untuk mencari product di items
   });
 
   console.log('Found order:', order);
 
   if (!order) {
-    return next(new AppError('You can only review products from delivered orders', 400));
+    return next(new AppError('You can only review products from accepted orders', 400));
   }
 
   // Cek jika user sudah review product ini
@@ -75,10 +75,10 @@ exports.checkCanReview = catchAsync(async (req, res, next) => {
     });
   }
 
-  // Cek delivered order dengan $elemMatch untuk memastikan product ada di items
+  // Cek accepted order dengan $elemMatch untuk memastikan product ada di items
   const order = await Order.findOne({
     user: userId,
-    status: 'delivered',
+    status: 'accepted',
     items: {
       $elemMatch: {
         product: productId
@@ -86,7 +86,7 @@ exports.checkCanReview = catchAsync(async (req, res, next) => {
     }
   });
 
-  console.log('Found delivered order:', order);
+  console.log('Found accepted order:', order);
 
   const canReview = Boolean(order);
 

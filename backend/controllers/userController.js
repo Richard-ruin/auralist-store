@@ -53,7 +53,13 @@ exports.getAllUsers = catchAsync(async (req, res) => {
     }
   });
 });
-
+exports.getMe = catchAsync(async (req, res, next) => {
+  // User is already available in req.user from the protect middleware
+  res.status(200).json({
+    status: 'success',
+    data: req.user
+  });
+});
 exports.updateAvatar = catchAsync(async (req, res, next) => {
   if (!req.file) {
     return next(new AppError('Please upload an image', 400));

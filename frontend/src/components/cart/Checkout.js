@@ -1,197 +1,141 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'react-hot-toast';
-import { Loader, ChevronLeft } from 'lucide-react';
-import orderService from '../../services/order';
+import { ChevronLeft, Loader, CreditCard, Check, Truck, ShieldCheck } from 'lucide-react';
 import { useCart } from '../../hooks/useCart';
+import orderService from '../../services/order';
 import api from '../../services/api';
-
-// Import payment components
+import ShippingAddressSelector from '../payment/ShippingAddressSelector';
+import OrderSummary from '../payment/OrderSummary';
+import StatusBadge from '../payment/StatusBadge';
 import PaymentMethod from '../payment/PaymentMethod';
 import PaymentDetails from '../payment/PaymentDetails';
 import PaymentConfirmation from '../payment/PaymentConfirmation';
 import PaymentWaiting from '../payment/PaymentWaiting';
-import OrderSummary from '../payment/OrderSummary';
-import StatusBadge from '../payment/StatusBadge';
 
 const Checkout = () => {
   const navigate = useNavigate();
   const { cart, loading: cartLoading, clearCart } = useCart();
   const [loading, setLoading] = useState(false);
+  const [addresses, setAddresses] = useState([]);
+  const [selectedAddressId, setSelectedAddressId] = useState(null);
+  const [processingOrder, setProcessingOrder] = useState(false);
   const [error, setError] = useState(null);
-  const [orderData, setOrderData] = useState(null);
+  
+  // Checkout flow steps
+  const [currentStep, setCurrentStep] = useState('checkout');
+  const [selectedPaymentMethod, setSelectedPaymentMethod] = useState(null);
   const [orderId, setOrderId] = useState(null);
-  const [step, setStep] = useState('method');
-  const [selectedMethod, setSelectedMethod] = useState(null);
 
-  // Payment method options
-  const paymentMethods = [
-    {
-      type: 'international',
-      title: 'International Banking',
-      description: 'Pay with Visa or Mastercard',
-      methods: [
-        { id: 'visa', name: 'Visa', logo: '/visa.png' },
-        { id: 'mastercard', name: 'Mastercard', logo: '/mastercard.png' }
-      ]
-    },
-    {
-      type: 'local',
-      title: 'Local Banking',
-      description: 'Pay with Indonesian Banks',
-      methods: [
-        { id: 'bri', name: 'BRI', logo: '/bri.png' },
-        { id: 'bca', name: 'BCA', logo: '/bca.png' },
-        { id: 'mandiri', name: 'Mandiri', logo: '/mandiri.png' }
-      ]
-    }
-  ];
-
+  // Fetch user addresses on component mount
   useEffect(() => {
-    const initializeCheckout = async () => {
-      if (!cartLoading && (!cart || cart.items.length === 0)) {
-        toast.error('Your cart is empty');
-        navigate('/cart');
-        return;
-      }
-
-      if (cart) {
-        try {
-          setLoading(true);
-          
-          // Check for default address first
-          let defaultAddress;
-          try {
-            const addressResponse = await api.get('/addresses/default');
-            defaultAddress = addressResponse.data.data;
-          } catch (error) {
-            if (error.response?.status === 404) {
-              toast.error('Please set a default shipping address first');
-              navigate('/user/address-book');
-              return;
-            }
-            throw error;
-          }
-
-          // Create initial order with shipping address
-          const initialOrderData = {
-            items: cart.items.map(item => ({
-              product: item.product._id,
-              quantity: item.quantity,
-              price: item.price
-            })),
-            shippingAddress: defaultAddress._id,
-            totalAmount: cart.totalAmount
-          };
-
-          const response = await orderService.createOrder(initialOrderData);
-          setOrderId(response.data.data.order._id);
-
-          // Transform cart data for display
-          const transformedData = {
-            ...response.data.data.order,
-            items: cart.items.map(item => ({
-              product: {
-                _id: item.product._id,
-                name: item.product.name,
-                image: item.product.mainImage,
-                price: item.product.price
-              },
-              quantity: Number(item.quantity) || 1,
-              price: Number(item.price) || 0,
-              total: (Number(item.price) || 0) * (Number(item.quantity) || 1)
-            })),
-            totalAmount: Number(cart.totalAmount) || 0,
-            currency: 'USD'
-          };
-
-          setOrderData(transformedData);
-        } catch (error) {
-          console.error('Error initializing checkout:', error);
-          setError(error.message);
-          toast.error('Failed to initialize checkout');
-        } finally {
-          setLoading(false);
+    const fetchAddresses = async () => {
+      try {
+        const response = await api.get('/addresses');
+        setAddresses(response.data.data);
+        
+        // If there's a default address, select it
+        const defaultAddress = response.data.data.find(addr => addr.isDefault);
+        if (defaultAddress) {
+          setSelectedAddressId(defaultAddress._id);
+        } else if (response.data.data.length > 0) {
+          setSelectedAddressId(response.data.data[0]._id);
         }
+      } catch (error) {
+        console.error('Error fetching addresses:', error);
+        setError('Failed to load your shipping addresses');
+      } finally {
+        setLoading(false);
       }
     };
 
-    initializeCheckout();
-  }, [cart, cartLoading, navigate]);
+    setLoading(true);
+    fetchAddresses();
+  }, []);
 
-  const handlePaymentMethodSelect = async (method) => {
+  // Handle address selection
+  const handleAddressSelect = (addressId) => {
+    setSelectedAddressId(addressId);
+  };
+
+  // Handle checkout/place order
+  const handlePlaceOrder = async () => {
+    if (!selectedAddressId) {
+      toast.error('Please select a shipping address');
+      return;
+    }
+
+    if (!cart || cart.items.length === 0) {
+      toast.error('Your cart is empty');
+      return;
+    }
+
+    setProcessingOrder(true);
+    setError(null);
+
     try {
-      setLoading(true);
-      setSelectedMethod(method);
+      // Prepare order data from cart items
+      const orderItems = cart.items.map(item => ({
+        product: item.product._id,
+        quantity: item.quantity,
+        price: item.product.price
+      }));
 
-      await orderService.updateOrder(orderId, {
-        paymentMethod: method
-      });
+      const orderData = {
+        items: orderItems,
+        shippingAddress: selectedAddressId,
+        totalAmount: cart.totalAmount
+      };
 
-      setStep('details');
+      // Create the order
+      const response = await orderService.createOrder(orderData);
+      const createdOrderId = response.data.data.order._id;
+      
+      // Set order ID for next steps
+      setOrderId(createdOrderId);
+      
+      // Move to payment method selection
+      setCurrentStep('payment-method');
+      
+      // We'll clear cart only after successful payment
     } catch (error) {
-      console.error('Error selecting payment method:', error);
-      toast.error('Failed to process payment method');
+      console.error('Error creating order:', error);
+      setError(error.response?.data?.message || 'Failed to create order. Please try again.');
+      toast.error('Failed to create order');
     } finally {
-      setLoading(false);
+      setProcessingOrder(false);
     }
   };
-
-  const handlePaymentDetailsNext = async () => {
-    setStep('confirmation');
+  
+  // Handle payment method selection
+  const handleSelectPaymentMethod = (method) => {
+    setSelectedPaymentMethod(method);
+    setCurrentStep('payment-details');
   };
-
-  const handleConfirmationSuccess = async () => {
-    try {
-      await clearCart();
-      setStep('waiting');
-    } catch (error) {
-      toast.error('Failed to process payment confirmation');
-    }
+  
+  // Move to payment confirmation step
+  const handleContinueToConfirmation = () => {
+    setCurrentStep('payment-confirmation');
   };
-
-  const renderStepContent = () => {
-    switch (step) {
-      case 'method':
-        return (
-          <PaymentMethod
-            paymentMethods={paymentMethods}
-            selectedMethod={selectedMethod}
-            onSelect={handlePaymentMethodSelect}
-            onNext={() => {}} // Handled by handlePaymentMethodSelect
-            orderId={orderId}
-          />
-        );
-      case 'details':
-        return (
-          <PaymentDetails
-            orderId={orderId}
-            paymentMethod={selectedMethod}
-            amount={orderData.totalAmount}
-            currency={orderData.currency}
-            onBack={() => setStep('method')}
-            onNext={handlePaymentDetailsNext}
-          />
-        );
-      case 'confirmation':
-        return (
-          <PaymentConfirmation
-            orderId={orderId}
-            paymentMethod={selectedMethod}
-            onBack={() => setStep('details')}
-            onSuccess={handleConfirmationSuccess}
-          />
-        );
-      case 'waiting':
-        return (
-          <PaymentWaiting
-            orderId={orderId}
-            onBack={() => navigate('/user/orders')}
-          />
-        );
-      default:
-        return null;
-    }
+  
+  // Handle payment submission success
+  const handlePaymentSuccess = async () => {
+    // Clear the cart after successful payment submission
+    await clearCart();
+    setCurrentStep('payment-waiting');
+  };
+  
+  // Handle back navigation between steps
+  const handleBackToMethod = () => {
+    setCurrentStep('payment-method');
+  };
+  
+  const handleBackToDetails = () => {
+    setCurrentStep('payment-details');
+  };
+  
+  const handleBackToOrders = () => {
+    navigate('/user/orders');
   };
 
   if (cartLoading || loading) {
@@ -199,109 +143,345 @@ const Checkout = () => {
       <div className="min-h-screen flex items-center justify-center">
         <div className="flex flex-col items-center">
           <Loader className="w-8 h-8 animate-spin text-indigo-600" />
-          <p className="mt-2 text-gray-600">Processing checkout...</p>
+          <p className="mt-2 text-gray-600">Loading checkout information...</p>
         </div>
       </div>
     );
   }
 
-  if (error || !orderData) {
+  if (!cart || cart.items.length === 0) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
+      <div className="min-h-screen py-12 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto">
         <div className="text-center">
-          <h2 className="text-xl font-semibold text-gray-900 mb-2">
-            Error Processing Checkout
-          </h2>
-          <p className="text-gray-600 mb-4">{error || 'Cart data not found'}</p>
+          <h2 className="text-2xl font-bold text-gray-900 mb-4">Your cart is empty</h2>
+          <p className="text-gray-600 mb-6">Add some items to your cart before checking out.</p>
           <button
-            onClick={() => navigate('/cart')}
-            className="text-indigo-600 hover:text-indigo-800"
+            onClick={() => navigate('/shop')}
+            className="inline-flex items-center px-6 py-3 border border-transparent text-base font-medium rounded-md shadow-sm text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
           >
-            Return to Cart
+            Continue Shopping
           </button>
         </div>
       </div>
     );
   }
 
-  return (
-    <div className="min-h-screen bg-gray-50 py-8">
-      <div className="max-w-4xl mx-auto px-4">
-        {/* Header */}
-        <div className="mb-8">
+  // Render different steps based on current step
+  const renderStep = () => {
+    // Step 1: Initial checkout (selecting address)
+    if (currentStep === 'checkout') {
+      return (
+        <div className="min-h-screen py-12 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto">
+          {/* Back Button */}
           <button
             onClick={() => navigate('/cart')}
-            className="flex items-center text-gray-600 hover:text-gray-900 mb-4"
+            className="flex items-center text-gray-600 hover:text-gray-900 mb-8"
           >
             <ChevronLeft className="w-5 h-5 mr-1" />
             Back to Cart
           </button>
-          <div className="flex items-center justify-between">
-            <div>
-              <h1 className="text-2xl font-bold text-gray-900">
-                Complete Your Payment
-              </h1>
-              {orderId && (
-                <p className="text-gray-600 mt-1">
-                  Order #{orderId.slice(-8).toUpperCase()}
-                </p>
-              )}
-            </div>
-            <StatusBadge status={orderData.status} />
-          </div>
-        </div>
 
-        {/* Progress Steps */}
-        <div className="mb-8">
-          <div className="flex items-center justify-between">
-            {['Payment Method', 'Payment Details', 'Confirmation', 'Waiting'].map((s, i) => (
-              <div key={s} className="flex items-center">
-                <div 
-                  className={`w-8 h-8 rounded-full flex items-center justify-center
-                    ${['method', 'details', 'confirmation', 'waiting'].indexOf(step) >= i 
-                      ? 'bg-indigo-600 text-white' 
-                      : 'bg-gray-200 text-gray-600'}`}
-                >
-                  {i + 1}
-                </div>
-                <div className="hidden sm:block">
-                  <span className={`ml-2 text-sm font-medium
-                    ${['method', 'details', 'confirmation', 'waiting'].indexOf(step) >= i 
-                      ? 'text-indigo-600' 
-                      : 'text-gray-500'}`}
-                  >
-                    {s}
-                  </span>
-                </div>
-                {i < 3 && (
-                  <div className="w-12 sm:w-24 h-1 mx-2 bg-gray-200">
-                    <div 
-                      className={`h-full bg-indigo-600 transition-all duration-300
-                        ${['method', 'details', 'confirmation', 'waiting'].indexOf(step) > i 
-                          ? 'w-full' 
-                          : 'w-0'}`}
-                    />
+          <h1 className="text-2xl font-bold text-gray-900 mb-8">Checkout</h1>
+
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+            {/* Main Content */}
+            <div className="lg:col-span-2">
+              {/* Shipping Address Section */}
+              <div className="bg-white rounded-lg shadow-md p-6 mb-8">
+                <h2 className="text-lg font-medium text-gray-900 mb-4">Shipping Address</h2>
+                
+                {error && (
+                  <div className="mb-4 p-4 bg-red-50 border border-red-200 rounded-md">
+                    <p className="text-sm text-red-600">{error}</p>
                   </div>
                 )}
+
+                <ShippingAddressSelector
+                  addresses={addresses}
+                  selectedAddressId={selectedAddressId}
+                  onAddressSelect={handleAddressSelect}
+                />
               </div>
-            ))}
+
+              {/* Shipping Method */}
+              <div className="bg-white rounded-lg shadow-md p-6 mb-8">
+                <h2 className="text-lg font-medium text-gray-900 mb-4">Shipping Method</h2>
+                
+                <div className="space-y-4">
+                  <div className="relative border border-gray-200 rounded-lg p-4 flex items-start">
+                    <div className="h-5 w-5 flex items-center justify-center mr-3 mt-0.5">
+                      <div className="h-4 w-4 bg-indigo-600 rounded-full">
+                        <Check className="h-3 w-3 text-white" />
+                      </div>
+                    </div>
+                    <div>
+                      <h3 className="text-sm font-medium text-gray-900">Standard Shipping</h3>
+                      <p className="text-sm text-gray-500 mt-1">Delivery in 3-5 business days</p>
+                      <p className="text-sm font-medium text-gray-900 mt-1">Free</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Payment Notice */}
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-8">
+                <div className="flex">
+                  <div className="flex-shrink-0">
+                    <CreditCard className="h-5 w-5 text-blue-400" />
+                  </div>
+                  <div className="ml-3">
+                    <h3 className="text-sm font-medium text-blue-800">
+                      Payment Information
+                    </h3>
+                    <div className="mt-2 text-sm text-blue-700">
+                      <p>You'll be able to select your payment method in the next step after placing your order.</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Benefits */}
+              <div className="border border-gray-200 rounded-lg p-6">
+                <h2 className="text-lg font-medium text-gray-900 mb-4">Purchase Benefits</h2>
+                
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div className="flex">
+                    <div className="flex-shrink-0">
+                      <Truck className="h-6 w-6 text-indigo-600" />
+                    </div>
+                    <div className="ml-3">
+                      <h3 className="text-sm font-medium text-gray-900">Free Shipping</h3>
+                      <p className="text-sm text-gray-500">On orders over $500</p>
+                    </div>
+                  </div>
+                  
+                  <div className="flex">
+                    <div className="flex-shrink-0">
+                      <ShieldCheck className="h-6 w-6 text-indigo-600" />
+                    </div>
+                    <div className="ml-3">
+                      <h3 className="text-sm font-medium text-gray-900">2-Year Warranty</h3>
+                      <p className="text-sm text-gray-500">On all our products</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Order Summary */}
+            <div className="lg:col-span-1">
+              <div className="bg-white rounded-lg shadow-md mb-6">
+                <div className="p-6 border-b border-gray-200">
+                  <h2 className="text-lg font-medium text-gray-900">Order Summary</h2>
+                </div>
+                
+                <div className="p-6 space-y-4">
+                  {/* Items */}
+                  <div className="space-y-4 mb-6">
+                    {cart.items.map((item) => (
+                      <div key={item.product._id} className="flex items-center">
+                        <div className="flex-shrink-0 w-16 h-16 bg-gray-100 rounded-md overflow-hidden">
+                          <img 
+                            src={item.product.mainImage ? `${process.env.REACT_APP_API_URL}/images/products/${item.product.mainImage}` : '/api/placeholder/400/320'} 
+                            alt={item.product.name}
+                            className="w-full h-full object-cover"
+                            onError={(e) => {
+                              e.target.onerror = null;
+                              e.target.src = '/api/placeholder/400/320';
+                            }}
+                          />
+                        </div>
+                        <div className="ml-4 flex-1">
+                          <div className="flex justify-between">
+                            <h3 className="text-sm font-medium text-gray-900">{item.product.name}</h3>
+                            <p className="text-sm font-medium text-gray-900">${(item.product.price * item.quantity).toFixed(2)}</p>
+                          </div>
+                          <p className="text-sm text-gray-500 mt-1">Qty: {item.quantity}</p>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                  
+                  {/* Price Summary */}
+                  <div className="border-t border-gray-200 pt-4">
+                    <div className="flex justify-between">
+                      <span className="text-sm text-gray-600">Subtotal</span>
+                      <span className="text-sm font-medium text-gray-900">${cart.totalAmount.toFixed(2)}</span>
+                    </div>
+                    <div className="flex justify-between mt-2">
+                      <span className="text-sm text-gray-600">Shipping</span>
+                      <span className="text-sm font-medium text-gray-900">Free</span>
+                    </div>
+                    <div className="flex justify-between mt-2">
+                      <span className="text-sm text-gray-600">Tax</span>
+                      <span className="text-sm font-medium text-gray-900">Included</span>
+                    </div>
+                    <div className="flex justify-between mt-4 pt-4 border-t border-gray-200">
+                      <span className="text-base font-medium text-gray-900">Total</span>
+                      <span className="text-base font-medium text-gray-900">${cart.totalAmount.toFixed(2)}</span>
+                    </div>
+                  </div>
+                  
+                  {/* Place Order Button */}
+                  <button
+                    onClick={handlePlaceOrder}
+                    disabled={processingOrder || !selectedAddressId}
+                    className={`mt-6 w-full flex items-center justify-center px-6 py-3 border border-transparent rounded-md shadow-sm text-base font-medium text-white
+                      ${processingOrder || !selectedAddressId 
+                        ? 'bg-gray-400 cursor-not-allowed' 
+                        : 'bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500'
+                      }`}
+                  >
+                    {processingOrder ? (
+                      <>
+                        <Loader className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" />
+                        Processing...
+                      </>
+                    ) : (
+                      'Place Order'
+                    )}
+                  </button>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
-
-        {/* Main Content */}
-        <div className="bg-white rounded-lg shadow-lg overflow-hidden mb-8">
-          <div className="p-6">
-            {renderStepContent()}
+      );
+    }
+    
+    // Step 2: Select payment method
+    else if (currentStep === 'payment-method') {
+      return (
+        <div className="min-h-screen py-12 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto">
+          <div className="max-w-4xl mx-auto">
+            <h1 className="text-2xl font-bold text-gray-900 mb-8">Payment Method</h1>
+            
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+              <div className="lg:col-span-2">
+                <PaymentMethod
+                  selectedMethod={selectedPaymentMethod}
+                  onSelect={handleSelectPaymentMethod}
+                  orderId={orderId}
+                />
+              </div>
+              
+              <div className="lg:col-span-1">
+                <OrderSummary orderData={{
+                  items: cart.items.map(item => ({
+                    product: {
+                      _id: item.product._id,
+                      name: item.product.name,
+                      mainImage: item.product.mainImage,
+                      price: item.product.price
+                    },
+                    quantity: item.quantity,
+                    price: item.product.price
+                  })),
+                  totalAmount: cart.totalAmount
+                }} />
+              </div>
+            </div>
           </div>
         </div>
+      );
+    }
+    
+    // Step 3: Payment details
+    else if (currentStep === 'payment-details') {
+      return (
+        <div className="min-h-screen py-12 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto">
+          <div className="max-w-4xl mx-auto">
+            <h1 className="text-2xl font-bold text-gray-900 mb-8">Payment Details</h1>
+            
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+              <div className="lg:col-span-2">
+                <PaymentDetails
+                  orderId={orderId}
+                  paymentMethod={selectedPaymentMethod}
+                  amount={cart.totalAmount}
+                  currency="USD"
+                  onBack={handleBackToMethod}
+                  onNext={handleContinueToConfirmation}
+                />
+              </div>
+              
+              <div className="lg:col-span-1">
+                <OrderSummary orderData={{
+                  items: cart.items.map(item => ({
+                    product: {
+                      _id: item.product._id,
+                      name: item.product.name,
+                      mainImage: item.product.mainImage,
+                      price: item.product.price
+                    },
+                    quantity: item.quantity,
+                    price: item.product.price
+                  })),
+                  totalAmount: cart.totalAmount
+                }} />
+              </div>
+            </div>
+          </div>
+        </div>
+      );
+    }
+    
+    // Step 4: Payment confirmation
+    else if (currentStep === 'payment-confirmation') {
+      return (
+        <div className="min-h-screen py-12 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto">
+          <div className="max-w-4xl mx-auto">
+            <h1 className="text-2xl font-bold text-gray-900 mb-8">Confirm Payment</h1>
+            
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+              <div className="lg:col-span-2">
+                <PaymentConfirmation
+                  orderId={orderId}
+                  paymentMethod={selectedPaymentMethod}
+                  onBack={handleBackToDetails}
+                  onSuccess={handlePaymentSuccess}
+                />
+              </div>
+              
+              <div className="lg:col-span-1">
+                <OrderSummary orderData={{
+                  items: cart.items.map(item => ({
+                    product: {
+                      _id: item.product._id,
+                      name: item.product.name,
+                      mainImage: item.product.mainImage,
+                      price: item.product.price
+                    },
+                    quantity: item.quantity,
+                    price: item.product.price
+                  })),
+                  totalAmount: cart.totalAmount
+                }} />
+              </div>
+            </div>
+          </div>
+        </div>
+      );
+    }
+    
+    // Step 5: Payment waiting
+    else if (currentStep === 'payment-waiting') {
+      return (
+        <div className="min-h-screen py-12 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto">
+          <div className="max-w-4xl mx-auto">
+            <h1 className="text-2xl font-bold text-gray-900 mb-8">Payment Status</h1>
+            
+            <PaymentWaiting
+              orderId={orderId}
+              onBack={handleBackToOrders}
+            />
+          </div>
+        </div>
+      );
+    }
+  };
 
-        {/* Order Summary */}
-        {step !== 'waiting' && (
-          <OrderSummary orderData={orderData} />
-        )}
-      </div>
-    </div>
-  );
+  return renderStep();
 };
 
 export default Checkout;

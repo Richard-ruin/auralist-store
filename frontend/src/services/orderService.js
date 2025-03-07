@@ -38,22 +38,22 @@ const orderService = {
   },
 
   // Update order status
-  updateOrderStatus: async (orderId, data) => {
-    try {
-      const response = await api.patch(`/orders/${orderId}/status`, {
-        status: data.status,
-        notes: data.notes
-      }, {
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
-        }
-      });
-      return response.data;
-    } catch (error) {
-      console.error('Error updating order status:', error);
-      throw error;
-    }
-  },
+  // In orderService.js
+// In orderService.js
+// In orderService.js
+updateOrderStatus: async (orderId, updateData) => {
+  try {
+    console.log('orderService - sending data:', updateData);
+    
+    // Send updateData directly without restructuring
+    const response = await api.patch(`/orders/${orderId}/status`, updateData);
+    
+    return response.data;
+  } catch (error) {
+    console.error('API Error:', error.response?.data || error);
+    throw error;
+  }
+},
 
   // Get single order details
   getOrderDetails: async (orderId) => {

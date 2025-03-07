@@ -27,6 +27,8 @@ const chatRoutes = require('./routes/chat');
 const chatBotRoutes = require('./routes/chatBot');
 const communityChannelRoutes = require('./routes/communityChannels');
 const reportRoutes = require('./routes/report');
+const { ExpeditionService, createInitialServices } = require('./models/ExpeditionService');
+const expeditionRoutes = require('./routes/expeditionService');
 
 // Import error handler
 const errorHandler = require('./middleware/errorHandler');
@@ -44,7 +46,8 @@ const createRequiredDirectories = () => {
   const directories = [
     path.join(__dirname, 'public/images/reviews'),
     path.join(__dirname, 'public/images/payments'),
-    path.join(__dirname, 'public/uploads/profiles')
+    path.join(__dirname, 'public/uploads/profiles'),
+    path.join(__dirname, 'public/images/expeditions')
   ];
 
   directories.forEach(dir => {
@@ -94,7 +97,12 @@ createRequiredDirectories();
 
 // Database connection
 mongoose.connect(process.env.MONGODB_URI)
-  .then(() => console.log('Connected to MongoDB'))
+  .then(async () => {
+    console.log('Connected to MongoDB');
+    // Make sure to import and call this function
+    const { createInitialServices } = require('./models/ExpeditionService');
+    await createInitialServices();
+  })
   .catch((err) => console.error('Could not connect to MongoDB...', err));
 
 // Middleware
@@ -191,6 +199,7 @@ app.use('/api/chat', chatRoutes);
 app.use('/api/chatbot', chatBotRoutes);
 app.use('/api/community/channels', communityChannelRoutes);
 app.use('/api/reports', reportRoutes);
+app.use('/api/expedition-services', expeditionRoutes);
 app.set('io', io);
 
 // Error handling

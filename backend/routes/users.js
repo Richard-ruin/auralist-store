@@ -8,6 +8,7 @@ const { protect, restrictTo } = require('../middleware/auth');
 // Protect all routes after this middleware
 router.use(protect);
 
+router.get('/me', userController.getMe);
 // Avatar routes
 router.post(
   '/:id/avatar',

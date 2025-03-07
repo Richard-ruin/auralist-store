@@ -12,6 +12,7 @@ import PaymentWaiting from '../components/payment/PaymentWaiting';
 import OrderSummary from '../components/payment/OrderSummary';
 import StatusBadge from '../components/payment/StatusBadge';
 
+
 const Payment = () => {
   const { orderId } = useParams();
   const navigate = useNavigate();

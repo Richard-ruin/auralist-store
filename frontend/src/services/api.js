@@ -8,14 +8,16 @@ const api = axios.create({
   }
 });
 
-// Add token to requests
-api.interceptors.request.use((config) => {
-  const token = localStorage.getItem('token');
-  if (token) {
-    config.headers.Authorization = `Bearer ${token}`;
-  }
-  return config;
-});
+api.interceptors.request.use(
+  (config) => {
+    const token = localStorage.getItem('token');
+    if (token) {
+      config.headers.Authorization = `Bearer ${token}`;
+    }
+    return config;
+  },
+  (error) => Promise.reject(error)
+);
 
 // Handle response errors
 api.interceptors.response.use(
@@ -28,5 +30,7 @@ api.interceptors.response.use(
     return Promise.reject(error.response?.data || error);
   }
 );
+
+
 
 export default api;

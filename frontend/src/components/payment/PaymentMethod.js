@@ -1,9 +1,9 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { CreditCard, Building2, Check } from 'lucide-react';
 import { toast } from 'react-hot-toast';
 import orderService from '../../services/order';
-
 const PaymentMethod = ({ selectedMethod, onSelect, onNext, orderId }) => {
+  const [isUpdating, setIsUpdating] = useState(false);
   // Predefined bank accounts with consistent naming
   const bankAccounts = {
     visa: {
@@ -32,8 +32,8 @@ const PaymentMethod = ({ selectedMethod, onSelect, onNext, orderId }) => {
       logo: "/bank-logos/mandiri.png"
     }
   };
-
   const handleMethodSelect = async (methodId) => {
+    setIsUpdating(true);
     try {
       // Update order dengan payment method yang dipilih
       await orderService.updateOrder(orderId, {
@@ -41,8 +41,12 @@ const PaymentMethod = ({ selectedMethod, onSelect, onNext, orderId }) => {
       });
       
       onSelect(methodId);
+      toast.success('Payment method selected successfully');
     } catch (error) {
+      console.error('Error updating payment method:', error);
       toast.error('Failed to update payment method');
+    } finally {
+      setIsUpdating(false);
     }
   };
   // Payment method categories with icons
@@ -69,18 +73,22 @@ const PaymentMethod = ({ selectedMethod, onSelect, onNext, orderId }) => {
       ]
     }
   ];
-
-  // Default image error handler
+  // Default image error handler with local fallback
   const handleImageError = (e) => {
-    e.target.src = 'https://via.placeholder.com/120x40?text=Bank+Logo';
+    e.target.src = '/assets/default-bank.png';
   };
-
+  const handleContinue = () => {
+    if (!selectedMethod) {
+      toast.error('Please select a payment method');
+      return;
+    }
+    onNext();
+  };
   return (
     <div className="max-w-2xl mx-auto">
       <h2 className="text-xl font-semibold text-gray-800 mb-6">
         Select Payment Method
       </h2>
-
       <div className="space-y-6">
         {paymentCategories.map((category) => (
           <div 
@@ -101,16 +109,17 @@ const PaymentMethod = ({ selectedMethod, onSelect, onNext, orderId }) => {
                 </div>
               </div>
             </div>
-
             {/* Payment Methods Grid */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 p-4">
               {category.methods.map((method) => (
                 <button
                   key={method.id}
                   onClick={() => handleMethodSelect(method.id)}
+                  disabled={isUpdating}
                   className={`relative rounded-lg border p-4 flex items-center 
                     transition-all duration-200 focus:outline-none focus:ring-2 
                     focus:ring-offset-2 focus:ring-indigo-500
+                    ${isUpdating ? 'opacity-50 cursor-not-allowed' : ''}
                     ${selectedMethod === method.id
                       ? 'border-indigo-600 bg-indigo-50'
                       : 'border-gray-300 hover:border-gray-400 hover:bg-gray-50'
@@ -125,7 +134,6 @@ const PaymentMethod = ({ selectedMethod, onSelect, onNext, orderId }) => {
                       className="h-8 w-auto object-contain"
                     />
                   </div>
-
                   {/* Bank Name */}
                   <div className="flex-1 min-w-0 ml-3">
                     <div className="text-sm font-medium text-gray-900">
@@ -137,7 +145,6 @@ const PaymentMethod = ({ selectedMethod, onSelect, onNext, orderId }) => {
                       </div>
                     )}
                   </div>
-
                   {/* Selection Indicator */}
                   {selectedMethod === method.id && (
                     <div className="absolute -top-2 -right-2 h-6 w-6 bg-indigo-600 
@@ -151,36 +158,36 @@ const PaymentMethod = ({ selectedMethod, onSelect, onNext, orderId }) => {
           </div>
         ))}
       </div>
-
       {/* Action Buttons */}
       <div className="mt-8 flex justify-end space-x-4">
         <button
-          onClick={onNext}
-          disabled={!selectedMethod}
+          onClick={handleContinue}
+          disabled={!selectedMethod || isUpdating}
           className={`flex items-center px-6 py-2 rounded-lg font-medium
             transition-colors duration-200
-            ${selectedMethod
-              ? 'bg-indigo-600 hover:bg-indigo-700 text-white'
-              : 'bg-gray-100 text-gray-400 cursor-not-allowed'
+            ${(!selectedMethod || isUpdating)
+              ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
+              : 'bg-indigo-600 hover:bg-indigo-700 text-white'
             }`}
         >
-          Continue to Payment
-          <svg 
-            className="ml-2 h-5 w-5" 
-            fill="none" 
-            viewBox="0 0 24 24" 
-            stroke="currentColor"
-          >
-            <path 
-              strokeLinecap="round" 
-              strokeLinejoin="round" 
-              strokeWidth={2} 
-              d="M9 5l7 7-7 7" 
-            />
-          </svg>
+          {isUpdating ? 'Processing...' : 'Continue to Payment'}
+          {!isUpdating && (
+            <svg 
+              className="ml-2 h-5 w-5" 
+              fill="none" 
+              viewBox="0 0 24 24" 
+              stroke="currentColor"
+            >
+              <path 
+                strokeLinecap="round" 
+                strokeLinejoin="round" 
+                strokeWidth={2} 
+                d="M9 5l7 7-7 7" 
+              />
+            </svg>
+          )}
         </button>
       </div>
-
       {/* Information Box */}
       {selectedMethod && (
         <div className="mt-6 bg-blue-50 border border-blue-200 rounded-lg p-4">
@@ -204,5 +211,4 @@ const PaymentMethod = ({ selectedMethod, onSelect, onNext, orderId }) => {
     </div>
   );
 };
-
 export default PaymentMethod;

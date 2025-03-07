@@ -1,196 +1,194 @@
 import React, { useState } from 'react';
+import { X, Home, Building2, MapPin } from 'lucide-react';
+import { toast } from 'react-hot-toast';
+import api from '../../services/api';
 
-const ShippingAddressForm = ({ onSubmit, onBack }) => {
+const ShippingAddressForm = ({ isOpen, onClose, onAddressAdded }) => {
   const [formData, setFormData] = useState({
+    type: 'home',
+    name: '',
+    phone: '',
     street: '',
     city: '',
     state: '',
     postalCode: '',
     country: '',
-    phone: ''
+    isDefault: false
   });
 
-  const [errors, setErrors] = useState({});
-
-  const handleChange = (e) => {
-    const { name, value } = e.target;
-    setFormData(prev => ({
-      ...prev,
-      [name]: value
-    }));
-    // Clear error when user types
-    if (errors[name]) {
-      setErrors(prev => ({ ...prev, [name]: '' }));
-    }
-  };
-
-  const validateForm = () => {
-    const newErrors = {};
-    const fields = Object.keys(formData);
-    
-    fields.forEach(field => {
-      if (!formData[field].trim()) {
-        newErrors[field] = `${field.charAt(0).toUpperCase() + field.slice(1)} is required`;
-      }
-    });
-
-    // Validate postal code format
-    if (formData.postalCode && !/^\d{5}(-\d{4})?$/.test(formData.postalCode)) {
-      newErrors.postalCode = 'Invalid postal code format';
-    }
-
-    // Validate phone number format
-    if (formData.phone && !/^\d{10,12}$/.test(formData.phone)) {
-      newErrors.phone = 'Invalid phone number format';
-    }
-
-    setErrors(newErrors);
-    return Object.keys(newErrors).length === 0;
-  };
-
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    if (validateForm()) {
-      onSubmit(formData);
+    try {
+      const response = await api.post('/addresses', formData);
+      toast.success('Address added successfully');
+      onAddressAdded(response.data.data);
+      onClose();
+      resetForm();
+    } catch (error) {
+      toast.error(error.response?.data?.message || 'Failed to add address');
     }
   };
+
+  const resetForm = () => {
+    setFormData({
+      type: 'home',
+      name: '',
+      phone: '',
+      street: '',
+      city: '',
+      state: '',
+      postalCode: '',
+      country: '',
+      isDefault: false
+    });
+  };
+
+  if (!isOpen) return null;
 
   return (
-    <div className="max-w-2xl mx-auto">
-      <form onSubmit={handleSubmit} className="space-y-6">
-        {/* Street Address */}
-        <div>
-          <label htmlFor="street" className="block text-sm font-medium text-gray-700">
-            Street Address
-          </label>
-          <input
-            type="text"
-            id="street"
-            name="street"
-            value={formData.street}
-            onChange={handleChange}
-            className={`mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm
-              ${errors.street ? 'border-red-500' : ''}`}
-          />
-          {errors.street && (
-            <p className="mt-1 text-sm text-red-600">{errors.street}</p>
-          )}
-        </div>
-
-        {/* City and State */}
-        <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
-          <div>
-            <label htmlFor="city" className="block text-sm font-medium text-gray-700">
-              City
-            </label>
-            <input
-              type="text"
-              id="city"
-              name="city"
-              value={formData.city}
-              onChange={handleChange}
-              className={`mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm
-                ${errors.city ? 'border-red-500' : ''}`}
-            />
-            {errors.city && (
-              <p className="mt-1 text-sm text-red-600">{errors.city}</p>
-            )}
-          </div>
-
-          <div>
-            <label htmlFor="state" className="block text-sm font-medium text-gray-700">
-              State/Province
-            </label>
-            <input
-              type="text"
-              id="state"
-              name="state"
-              value={formData.state}
-              onChange={handleChange}
-              className={`mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm
-                ${errors.state ? 'border-red-500' : ''}`}
-            />
-            {errors.state && (
-              <p className="mt-1 text-sm text-red-600">{errors.state}</p>
-            )}
-          </div>
-        </div>
-
-        {/* Postal Code and Country */}
-        <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
-          <div>
-            <label htmlFor="postalCode" className="block text-sm font-medium text-gray-700">
-              Postal Code
-            </label>
-            <input
-              type="text"
-              id="postalCode"
-              name="postalCode"
-              value={formData.postalCode}
-              onChange={handleChange}
-              className={`mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm
-                ${errors.postalCode ? 'border-red-500' : ''}`}
-            />
-            {errors.postalCode && (
-              <p className="mt-1 text-sm text-red-600">{errors.postalCode}</p>
-            )}
-          </div>
-
-          <div>
-            <label htmlFor="country" className="block text-sm font-medium text-gray-700">
-              Country
-            </label>
-            <input
-              type="text"
-              id="country"
-              name="country"
-              value={formData.country}
-              onChange={handleChange}
-              className={`mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm
-                ${errors.country ? 'border-red-500' : ''}`}
-            />
-            {errors.country && (
-              <p className="mt-1 text-sm text-red-600">{errors.country}</p>
-            )}
-          </div>
-        </div>
-
-        {/* Phone Number */}
-        <div>
-          <label htmlFor="phone" className="block text-sm font-medium text-gray-700">
-            Phone Number
-          </label>
-          <input
-            type="tel"
-            id="phone"
-            name="phone"
-            value={formData.phone}
-            onChange={handleChange}
-            className={`mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm
-              ${errors.phone ? 'border-red-500' : ''}`}
-          />
-          {errors.phone && (
-            <p className="mt-1 text-sm text-red-600">{errors.phone}</p>
-          )}
-        </div>
-
-        {/* Action Buttons */}
-        <div className="flex justify-between pt-4">
-          <button
-            type="button"
-            onClick={onBack}
-            className="inline-flex items-center px-4 py-2 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50"
-          >
-            Back
-          </button>
-          <button
-            type="submit"
-            className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-indigo-600 hover:bg-indigo-700"
-          >
-            Continue to Payment
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+      <div className="bg-white rounded-lg w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+        <div className="flex items-center justify-between p-6 border-b">
+          <h3 className="text-lg font-medium text-gray-900">Add New Address</h3>
+          <button onClick={onClose} className="text-gray-400 hover:text-gray-500">
+            <X className="w-5 h-5" />
           </button>
         </div>
-      </form>
+
+        <form onSubmit={handleSubmit} className="p-6">
+          <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
+            <div className="sm:col-span-2">
+              <label className="block text-sm font-medium text-gray-700 mb-2">Address Type</label>
+              <div className="grid grid-cols-3 gap-4">
+                {[
+                  { id: 'home', icon: Home, label: 'Home' },
+                  { id: 'office', icon: Building2, label: 'Office' },
+                  { id: 'other', icon: MapPin, label: 'Other' }
+                ].map(({ id, icon: Icon, label }) => (
+                  <button
+                    key={id}
+                    type="button"
+                    onClick={() => setFormData({ ...formData, type: id })}
+                    className={`flex flex-col items-center justify-center p-4 border rounded-lg ${
+                      formData.type === id 
+                        ? 'border-indigo-600 bg-indigo-50 text-indigo-600' 
+                        : 'border-gray-200 text-gray-600 hover:border-gray-300'
+                    }`}
+                  >
+                    <Icon className="w-6 h-6 mb-2" />
+                    <span className="text-sm font-medium">{label}</span>
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700">Full Name</label>
+              <input
+                type="text"
+                value={formData.name}
+                onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                className="mt-1 block w-full rounded-md border border-gray-300 py-2 px-3 focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                required
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700">Phone Number</label>
+              <input
+                type="tel"
+                value={formData.phone}
+                onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+                className="mt-1 block w-full rounded-md border border-gray-300 py-2 px-3 focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                required
+              />
+            </div>
+
+            <div className="sm:col-span-2">
+              <label className="block text-sm font-medium text-gray-700">Street Address</label>
+              <input
+                type="text"
+                value={formData.street}
+                onChange={(e) => setFormData({ ...formData, street: e.target.value })}
+                className="mt-1 block w-full rounded-md border border-gray-300 py-2 px-3 focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                required
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700">City</label>
+              <input
+                type="text"
+                value={formData.city}
+                onChange={(e) => setFormData({ ...formData, city: e.target.value })}
+                className="mt-1 block w-full rounded-md border border-gray-300 py-2 px-3 focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                required
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700">State/Province</label>
+              <input
+                type="text"
+                value={formData.state}
+                onChange={(e) => setFormData({ ...formData, state: e.target.value })}
+                className="mt-1 block w-full rounded-md border border-gray-300 py-2 px-3 focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                required
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700">Postal Code</label>
+              <input
+                type="text"
+                value={formData.postalCode}
+                onChange={(e) => setFormData({ ...formData, postalCode: e.target.value })}
+                className="mt-1 block w-full rounded-md border border-gray-300 py-2 px-3 focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                required
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700">Country</label>
+              <input
+                type="text"
+                value={formData.country}
+                onChange={(e) => setFormData({ ...formData, country: e.target.value })}
+                className="mt-1 block w-full rounded-md border border-gray-300 py-2 px-3 focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                required
+              />
+            </div>
+
+            <div className="sm:col-span-2">
+              <label className="flex items-center">
+                <input
+                  type="checkbox"
+                  checked={formData.isDefault}
+                  onChange={(e) => setFormData({ ...formData, isDefault: e.target.checked })}
+                  className="rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
+                />
+                <span className="ml-2 text-sm text-gray-600">Set as default shipping address</span>
+              </label>
+            </div>
+          </div>
+
+          <div className="mt-6 flex justify-end space-x-4">
+            <button
+              type="button"
+              onClick={onClose}
+              className="px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 border border-gray-300 rounded-md"
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              className="px-4 py-2 text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 rounded-md"
+            >
+              Add Address
+            </button>
+          </div>
+        </form>
+      </div>
     </div>
   );
 };

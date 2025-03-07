@@ -2,10 +2,12 @@ import React, { useState, useEffect } from 'react';
 import { MapPin, Plus, Check, Building2, Home } from 'lucide-react';
 import api from '../../services/api';
 import { toast } from 'react-hot-toast';
+import ShippingAddressForm from './ShippingAddressForm';
 
 const ShippingAddressSelector = ({ selectedAddressId, onSelect }) => {
   const [addresses, setAddresses] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [showAddressForm, setShowAddressForm] = useState(false);
 
   useEffect(() => {
     fetchAddresses();
@@ -26,6 +28,13 @@ const ShippingAddressSelector = ({ selectedAddressId, onSelect }) => {
       toast.error('Failed to load addresses');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleAddressAdded = (newAddress) => {
+    setAddresses([...addresses, newAddress]);
+    if (newAddress.isDefault) {
+      onSelect(newAddress._id);
     }
   };
 
@@ -86,17 +95,21 @@ const ShippingAddressSelector = ({ selectedAddressId, onSelect }) => {
         </div>
       ))}
 
-      <a 
-        href="/profile?tab=address" 
-        target="_blank"
-        rel="noopener noreferrer"
-        className="flex items-center justify-center p-4 border border-dashed border-gray-300 rounded-lg hover:border-gray-400"
+      <button 
+        onClick={() => setShowAddressForm(true)}
+        className="flex items-center justify-center w-full p-4 border border-dashed border-gray-300 rounded-lg hover:border-gray-400"
       >
         <Plus className="w-5 h-5 text-gray-400 mr-2" />
         <span className="text-sm font-medium text-gray-900">
           Add New Address
         </span>
-      </a>
+      </button>
+
+      <ShippingAddressForm 
+        isOpen={showAddressForm}
+        onClose={() => setShowAddressForm(false)}
+        onAddressAdded={handleAddressAdded}
+      />
     </div>
   );
 };

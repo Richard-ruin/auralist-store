@@ -50,35 +50,85 @@ const OrderManager = () => {
 
   // Apply filters when orders or filters change
   useEffect(() => {
-    let result = filterOrders(orders, filters);
-    result = sortOrders(result, filters.sortBy);
-    setFilteredOrders(result);
-    setPagination(prev => ({
-      ...prev,
-      totalPages: Math.ceil(result.length / prev.itemsPerPage)
-    }));
+    if (Array.isArray(orders)) {
+      let result = filterOrders(orders, filters);
+      result = sortOrders(result, filters.sortBy);
+      setFilteredOrders(result);
+      setPagination(prev => ({
+        ...prev,
+        totalPages: Math.ceil(result.length / prev.itemsPerPage) || 1
+      }));
+    }
   }, [orders, filters]);
 
   const fetchData = async () => {
     try {
       setLoading(true);
-      const [ordersResponse, statsResponse] = await Promise.all([
-        orderService.getAllOrders(),
-        orderService.getOrderStats()
-      ]);
       
-      // Set orders dengan null check
-      setOrders(ordersResponse?.data?.orders || []);
+      // Get all orders first
+      const ordersResponse = await orderService.getAllOrders();
       
-      // Set stats dengan struktur yang benar
-      const statsData = statsResponse?.data?.data || statsResponse?.data || {
-        total: 0,
-        thisMonth: 0,
-        pending: 0,
-        processing: 0
-      };
+      // Set orders with safety checks
+      if (ordersResponse?.data?.orders) {
+        setOrders(ordersResponse.data.orders);
+      } else {
+        setOrders([]);
+        console.warn('Unexpected order response format:', ordersResponse);
+      }
       
-      setStats(statsData);
+      try {
+        // Get stats separately
+        const statsResponse = await orderService.getOrderStats();
+        
+        if (statsResponse?.data) {
+          // Extract and process stats data
+          const statsData = statsResponse.data;
+          
+          // Process stats data for the new order flow
+          const statsSummary = {
+            total: 0,
+            thisMonth: 0,
+            pending: 0,
+            processing: 0
+          };
+          
+          // If stats is an array of status groups
+          if (Array.isArray(statsData.stats)) {
+            statsData.stats.forEach(item => {
+              // Add to total count
+              statsSummary.total += item.count || 0;
+              
+              // Count by status
+              if (item._id === 'processing') {
+                statsSummary.processing += item.count || 0;
+              } else if (item._id === 'pending' || item._id === 'confirmed') {
+                statsSummary.pending += item.count || 0;
+              }
+            });
+          }
+          
+          // Get this month count from totals or calculate it
+          if (statsData.totals) {
+            statsSummary.thisMonth = statsData.totals.totalOrders || 0;
+          } else {
+            // Filter orders from this month
+            const now = new Date();
+            const thisMonth = now.getMonth();
+            const thisYear = now.getFullYear();
+            
+            statsSummary.thisMonth = orders.filter(order => {
+              const orderDate = new Date(order.createdAt);
+              return orderDate.getMonth() === thisMonth && 
+                     orderDate.getFullYear() === thisYear;
+            }).length;
+          }
+          
+          setStats(statsSummary);
+        }
+      } catch (statsError) {
+        console.error('Error fetching stats:', statsError);
+        // Continue without stats, don't show error to user
+      }
       
     } catch (error) {
       console.error('Error fetching orders:', error);
@@ -87,41 +137,93 @@ const OrderManager = () => {
       setLoading(false);
     }
   };
-  const handleStatusUpdate = async (status, notes) => {
-    if (!selectedOrder) {
-      toast.error('No order selected');
-      return;
-    }
-  
-    try {
-      await orderService.updateOrderStatus(selectedOrder._id, {
-        status,
-        notes
-      });
-      await fetchData(); // Refresh data
-      setIsModalOpen(false);
-      toast.success(`Order status updated to ${status}`);
-    } catch (error) {
-      console.error('Error updating order status:', error);
-      toast.error(error.response?.data?.message || 'Failed to update order status');
-    }
-  };
 
+  // In OrderManager.js
+const handleStatusUpdate = async (status, notes, expeditionData = null) => {
+  if (!selectedOrder) {
+    toast.error('No order selected');
+    return;
+  }
+
+  try {
+    // Create a properly structured update object
+    const updateData = { 
+      status, 
+      notes 
+    };
+    
+    // Include expedition data if provided
+    if (expeditionData) {
+      updateData.expedition = expeditionData;
+    }
+    
+    console.log('OrderManager - sending update data:', updateData);
+    
+    // Pass the update data as a single object
+    await orderService.updateOrderStatus(selectedOrder._id, updateData);
+    await fetchData(); // Refresh data
+    setIsModalOpen(false);
+    toast.success(`Order status updated to ${status}`);
+  } catch (error) {
+    console.error('Error updating order status:', error);
+    toast.error(error.response?.data?.message || 'Failed to update order status');
+  }
+};
+
+  // Helper function to get status color based on new status system
   const getStatusColor = (status) => {
     if (!status) return 'bg-gray-100 text-gray-800';
     
     switch (status.toLowerCase()) {
-      case 'completed':
+      case 'confirmed':
         return 'bg-green-100 text-green-800';
       case 'processing':
         return 'bg-yellow-100 text-yellow-800';
-      case 'pending':
+      case 'being_packed':
+        return 'bg-indigo-100 text-indigo-800';
+      case 'managed_by_expedition':
+        return 'bg-blue-100 text-blue-800';
+      case 'shipped':
+        return 'bg-purple-100 text-purple-800';
+      case 'delivered':
+        return 'bg-teal-100 text-teal-800';
+      case 'accepted':
+        return 'bg-green-100 text-green-800';
+      case 'return_requested':
         return 'bg-orange-100 text-orange-800';
+      case 'return_approved':
+        return 'bg-blue-100 text-blue-800';
+      case 'return_shipped':
+        return 'bg-indigo-100 text-indigo-800';
+      case 'return_received':
+        return 'bg-teal-100 text-teal-800';
       case 'cancelled':
         return 'bg-red-100 text-red-800';
       default:
         return 'bg-gray-100 text-gray-800';
     }
+  };
+
+  // Helper function to get readable status
+  const getStatusDisplayName = (status) => {
+    if (!status) return 'Unknown';
+    
+    const statusMap = {
+      'processing': 'Processing',
+      'confirmed': 'Confirmed',
+      'being_packed': 'Being Packed',
+      'managed_by_expedition': 'With Expedition',
+      'shipped': 'Shipped',
+      'delivered': 'Delivered',
+      'accepted': 'Accepted',
+      'cancelled': 'Cancelled',
+      'return_requested': 'Return Requested',
+      'return_approved': 'Return Approved',
+      'return_shipped': 'Return Shipped',
+      'return_received': 'Return Received'
+    };
+    
+    return statusMap[status.toLowerCase()] || status;
   };
 
   const getPaymentStatusColor = (status) => {
@@ -138,8 +240,6 @@ const OrderManager = () => {
         return 'bg-gray-100 text-gray-800';
     }
   };
-
-  
 
   const handleFilterChange = (key, value) => {
     setFilters(prev => ({ ...prev, [key]: value }));
@@ -176,33 +276,49 @@ const OrderManager = () => {
   };
 
   const handleExport = (filters) => {
-    const filteredData = filteredOrders.filter(order => {
-      const orderDate = new Date(order.createdAt);
-      const matchesDate = orderDate.getFullYear() == filters.year && 
+    // Get data to export
+    let dataToExport = filteredOrders;
+    
+    // Apply additional filters if provided
+    if (filters) {
+      dataToExport = dataToExport.filter(order => {
+        if (!order.createdAt) return false;
+        
+        const orderDate = new Date(order.createdAt);
+        const matchesDate = orderDate.getFullYear() == filters.year && 
                          (orderDate.getMonth() + 1) == filters.month;
-      const matchesStatus = filters.status === 'all' || order.status === filters.status;
-      return matchesDate && matchesStatus;
-    });
+        const matchesStatus = filters.status === 'all' || order.status === filters.status;
+        return matchesDate && matchesStatus;
+      });
+    }
 
     const worksheet = XLSX.utils.aoa_to_sheet([
-      ['Order ID', 'Customer', 'Email', 'Date', 'Amount', 'Status', 'Payment Status'],
-      ...filteredData.map(order => [
-        order._id,
+      ['Order ID', 'Customer', 'Email', 'Date', 'Amount', 'Status', 'Payment Method', 'Tracking Number'],
+      ...dataToExport.map(order => [
+        order._id || '',
         order.user?.name || 'N/A',
         order.user?.email || 'N/A',
-        new Date(order.createdAt).toLocaleDateString(),
-        order.totalAmount?.toFixed(2) || '0.00',
-        order.status || 'Unknown',
-        order.paymentStatus || 'Unknown'
+        order.createdAt ? new Date(order.createdAt).toLocaleDateString() : 'N/A',
+        order.totalAmount ? order.totalAmount.toFixed(2) : '0.00',
+        getStatusDisplayName(order.status) || 'Unknown',
+        order.paymentMethod || 'Unknown',
+        order.expedition?.trackingNumber || 'N/A'
       ])
     ]);
 
     const workbook = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(workbook, worksheet, 'Orders');
-    XLSX.writeFile(workbook, `orders_${filters.year}_${filters.month}.xlsx`);
+    
+    const fileName = filters 
+      ? `orders_${filters.year}_${filters.month}.xlsx` 
+      : `orders_${new Date().toISOString().slice(0, 10)}.xlsx`;
+      
+    XLSX.writeFile(workbook, fileName);
   };
 
   const getCurrentPageOrders = () => {
+    if (!Array.isArray(filteredOrders)) return [];
+    
     const start = (pagination.currentPage - 1) * pagination.itemsPerPage;
     const end = start + pagination.itemsPerPage;
     return filteredOrders.slice(start, end);
@@ -302,10 +418,10 @@ const OrderManager = () => {
           </div>
         </div>
         <div className="flex items-center gap-4 w-full sm:w-auto">
-        <button
-  onClick={() => setIsExportModalOpen(true)}
-  className="flex items-center px-4 py-2 border border-gray-300 rounded-md hover:bg-gray-50"
->
+          <button
+            onClick={() => setIsExportModalOpen(true)}
+            className="flex items-center px-4 py-2 border border-gray-300 rounded-md hover:bg-gray-50"
+          >
             <Download className="w-5 h-5 mr-2" />
             Export
           </button>
@@ -320,114 +436,120 @@ const OrderManager = () => {
       />
 
       {/* Orders Table */}
-<div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
-  <table className="min-w-full divide-y divide-gray-200">
-    <thead className="bg-gray-50">
-      <tr>
-        <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-          Order ID
-        </th>
-        <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-          Customer
-        </th>
-        <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-          Date
-        </th>
-        <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-          Amount
-        </th>
-        <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-          Payment Method
-        </th>
-        <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-          Status
-        </th>
-        <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-          Payment Status
-        </th>
-        <th scope="col" className="relative px-6 py-3">
-          <span className="sr-only">Actions</span>
-        </th>
-      </tr>
-    </thead>
-    <tbody className="bg-white divide-y divide-gray-200">
-      {getCurrentPageOrders().map((order) => (
-        <tr key={order._id} className="hover:bg-gray-50">
-          <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-            {order._id}
-          </td>
-          <td className="px-6 py-4 whitespace-nowrap">
-            <div className="flex flex-col">
-              <div className="text-sm font-medium text-gray-900">
-                {order.user?.name || 'N/A'}
-              </div>
-              <div className="text-sm text-gray-500">
-                {order.user?.email || 'N/A'}
-              </div>
-            </div>
-          </td>
-          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-            {new Date(order.createdAt).toLocaleDateString()}
-          </td>
-          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-            ${order.totalAmount?.toFixed(2) || '0.00'}
-          </td>
-          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-            <span className="capitalize">{order.paymentMethod || 'Not specified'}</span>
-          </td>
-          <td className="px-6 py-4 whitespace-nowrap">
-            <span className={`px-2 py-1 text-xs font-semibold rounded-full ${getStatusColor(order.status)}`}>
-              {order.status || 'Unknown'}
-            </span>
-          </td>
-          <td className="px-6 py-4 whitespace-nowrap">
-            <span className={`px-2 py-1 text-xs font-semibold rounded-full ${getPaymentStatusColor(order.paymentStatus || order.paymentMethod)}`}>
-              {order.paymentStatus || order.paymentMethod || 'Unknown'}
-            </span>
-          </td>
-          <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-            <div className="flex items-center justify-end gap-2">
-              <button 
-                onClick={() => {
-                  setSelectedOrder(order);
-                  setIsModalOpen(true);
-                }}
-                className="text-indigo-600 hover:text-indigo-900"
-              >
-                <Eye className="w-5 h-5" />
-              </button>
-              <button className="text-gray-400 hover:text-gray-500">
-                <MoreVertical className="w-5 h-5" />
-              </button>
-            </div>
-          </td>
-        </tr>
-      ))}
-    </tbody>
-  </table>
-  
-  <Pagination
-    currentPage={pagination.currentPage}
-    totalPages={pagination.totalPages}
-    onPageChange={(page) => setPagination(prev => ({ ...prev, currentPage: page }))}
-  />
-</div>
+      <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
+        <table className="min-w-full divide-y divide-gray-200">
+          <thead className="bg-gray-50">
+            <tr>
+              <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                Order ID
+              </th>
+              <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                Customer
+              </th>
+              <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                Date
+              </th>
+              <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                Amount
+              </th>
+              <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                Payment Method
+              </th>
+              <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                Status
+              </th>
+              <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                Tracking
+              </th>
+              <th scope="col" className="relative px-6 py-3">
+                <span className="sr-only">Actions</span>
+              </th>
+            </tr>
+          </thead>
+          <tbody className="bg-white divide-y divide-gray-200">
+            {getCurrentPageOrders().map((order) => (
+              <tr key={order._id} className="hover:bg-gray-50">
+                <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                  {order._id ? order._id.substring(order._id.length - 8).toUpperCase() : 'N/A'}
+                </td>
+                <td className="px-6 py-4 whitespace-nowrap">
+                  <div className="flex flex-col">
+                    <div className="text-sm font-medium text-gray-900">
+                      {order.user?.name || 'N/A'}
+                    </div>
+                    <div className="text-sm text-gray-500">
+                      {order.user?.email || 'N/A'}
+                    </div>
+                  </div>
+                </td>
+                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                  {order.createdAt ? new Date(order.createdAt).toLocaleDateString() : 'N/A'}
+                </td>
+                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                  ${order.totalAmount?.toFixed(2) || '0.00'}
+                </td>
+                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                  <span className="capitalize">{order.paymentMethod || 'Not specified'}</span>
+                </td>
+                <td className="px-6 py-4 whitespace-nowrap">
+                  <span className={`px-2 py-1 text-xs font-semibold rounded-full ${getStatusColor(order.status)}`}>
+                    {getStatusDisplayName(order.status)}
+                  </span>
+                </td>
+                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                  {order.expedition?.trackingNumber || '-'}
+                </td>
+                <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                  <div className="flex items-center justify-end gap-2">
+                    <button 
+                      onClick={() => {
+                        setSelectedOrder(order);
+                        setIsModalOpen(true);
+                      }}
+                      className="text-indigo-600 hover:text-indigo-900"
+                    >
+                      <Eye className="w-5 h-5" />
+                    </button>
+                    <button className="text-gray-400 hover:text-gray-500">
+                      <MoreVertical className="w-5 h-5" />
+                    </button>
+                  </div>
+                </td>
+              </tr>
+            ))}
+            
+            {getCurrentPageOrders().length === 0 && (
+              <tr>
+                <td colSpan="8" className="px-6 py-4 text-center text-sm text-gray-500">
+                  No orders found matching your criteria
+                </td>
+              </tr>
+            )}
+          </tbody>
+        </table>
+        
+        <Pagination
+          currentPage={pagination.currentPage}
+          totalPages={pagination.totalPages}
+          onPageChange={(page) => setPagination(prev => ({ ...prev, currentPage: page }))}
+        />
+      </div>
 
-<OrderConfirmationModal
-  isOpen={isModalOpen}
-  onClose={() => {
-    setIsModalOpen(false);
-    setSelectedOrder(null);
-  }}
-  onConfirm={handleConfirmPayment}
-  onStatusUpdate={handleStatusUpdate}
-  order={selectedOrder}
-/>
-<ExportModal
-  isOpen={isExportModalOpen}
-  onClose={() => setIsExportModalOpen(false)}
-  onExport={handleExport}
-/>
+      <OrderConfirmationModal
+        isOpen={isModalOpen}
+        onClose={() => {
+          setIsModalOpen(false);
+          setSelectedOrder(null);
+        }}
+        onConfirm={handleConfirmPayment}
+        onStatusUpdate={handleStatusUpdate}
+        order={selectedOrder}
+      />
+      <ExportModal
+        isOpen={isExportModalOpen}
+        onClose={() => setIsExportModalOpen(false)}
+        onExport={handleExport}
+      />
     </div>
   );
 };

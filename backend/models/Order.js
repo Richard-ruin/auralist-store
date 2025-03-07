@@ -44,14 +44,29 @@ const orderSchema = new mongoose.Schema({
   },
   status: {
     type: String,
-    enum: ['processing', 'confirmed', 'shipped', 'delivered', 'cancelled', 'return_requested', 'return_approved', 'return_rejected', 'returned'],
+    enum: [
+      'processing',
+      'confirmed',
+      'being_packed',
+      'managed_by_expedition',
+      'shipped',
+      'delivered',
+      'accepted',
+      'cancelled',
+      'return_requested',
+      'return_approved',
+      'return_shipped',
+      'return_received',
+      'return_rejected',
+      'returned'
+    ],
     default: 'processing'
   },
   return: {
     requestDate: Date,
     status: {
       type: String,
-      enum: ['pending', 'approved', 'rejected'],
+      enum: ['pending', 'approved', 'rejected', 'shipped', 'received'],
     },
     reason: String,
     images: [String], // Array of image URLs
@@ -61,7 +76,12 @@ const orderSchema = new mongoose.Schema({
       type: mongoose.Schema.Types.ObjectId,
       ref: 'User'
     },
-    processedAt: Date
+    processedAt: Date,
+    expedition: {
+      service: String,
+      trackingNumber: String,
+      date: Date
+    }
   },
   paymentProof: {
     type: String
@@ -72,7 +92,12 @@ const orderSchema = new mongoose.Schema({
     type: mongoose.Schema.Types.ObjectId,
     ref: 'User'
   },
-  trackingNumber: String,
+  expedition: {
+    service: String,
+    trackingNumber: String,
+    date: Date
+  },
+  customerAcceptedAt: Date,
   notes: String
 }, {
   timestamps: true
@@ -93,12 +118,12 @@ orderSchema.pre('save', function(next) {
   }
   next();
 });
-const Order = mongoose.model('Order', orderSchema);
+
 // Add these indexes to optimize queries
 orderSchema.index({ createdAt: -1 });
 orderSchema.index({ status: 1 });
-orderSchema.index({ paymentStatus: 1 });
-// models/Order.js
 orderSchema.index({ user: 1, 'items.product': 1, status: 1 });
+
+const Order = mongoose.model('Order', orderSchema);
 
 module.exports = Order;
